@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react'
 
 function App() {
@@ -10,6 +9,7 @@ function App() {
     const [isStarted, setIsStarted] = useState(false)
     const [showStartMessage, setShowStartMessage] = useState(false)
     const [audioUnlocked, setAudioUnlocked] = useState(false)
+    const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString());
 
     const numbersRef = useRef([])
     const audioInstanceRef = useRef(new Audio('/victory.mp3'))
@@ -17,6 +17,13 @@ function App() {
     useEffect(() => {
         numbersRef.current = numbers
     }, [numbers])
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setCurrentTime(new Date().toLocaleTimeString());
+        }, 1000);
+        return () => clearInterval(timer);
+    }, []);
 
     // --- Desbloqueio de Áudio ---
     const unlockAudio = () => {
@@ -220,6 +227,13 @@ function App() {
 
     return (
         <div className="flex min-h-screen bg-slate-950 text-white overflow-hidden font-sans">
+            {/* Relógio Digital no Topo à Esquerda */}
+            <div className="fixed top-4 left-4 z-40">
+                <div className="bg-slate-900/80 backdrop-blur-md px-6 py-2 rounded-2xl border border-slate-800 shadow-2xl">
+                    <span className="text-4xl font-black text-yellow-500 font-mono tracking-widest">{currentTime}</span>
+                </div>
+            </div>
+
             {!audioUnlocked && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-xl">
                     <button onClick={unlockAudio} className="bg-yellow-500 hover:bg-yellow-400 text-black px-12 py-6 rounded-3xl font-black text-3xl shadow-[0_0_50px_rgba(234,179,8,0.4)] animate-pulse">
@@ -228,7 +242,7 @@ function App() {
                 </div>
             )}
             {showStartMessage && (
-                <div className="fixed top-10 left-1/2 -translate-x-1/2 z-50 bg-yellow-500 text-black px-10 py-5 rounded-2xl font-black text-2xl animate-bounce border-4 border-white shadow-2xl">
+                <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-yellow-500 text-black px-24 py-12 rounded-[3rem] font-black text-6xl animate-bounce border-[10px] border-white shadow-[0_0_100px_rgba(234,179,8,0.6)]">
                     A PRÓXIMA RODADA VAI COMEÇAR!
                 </div>
             )}
@@ -242,10 +256,15 @@ function App() {
                     </div>
                 </div>
             )}
-            <div className="flex-1 flex flex-col items-center p-10 space-y-10 overflow-y-auto">
-                <h1 className="text-9xl font-black text-yellow-500 italic flex gap-x-20 uppercase tracking-tighter">
-                    <span>RINGO</span>
-                </h1>
+            <div className="flex-1 flex flex-col items-center p-10 space-y-10 overflow-y-auto mt-12">
+                <div className="text-center">
+                    <h1 className="text-9xl font-black text-yellow-500 italic flex gap-x-20 uppercase tracking-tighter">
+                        <span>RINGO</span>
+                    </h1>
+                    <p className="text-yellow-500 font-black uppercase tracking-[0.3em] text-xl italic mt-[-15px]">
+                        Seu dia de sorte
+                    </p>
+                </div>
                 <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl text-center">
                     <div className="flex items-center justify-center space-x-3 mb-2">
                         <div className={`w-4 h-4 rounded-full ${isStarted ? 'bg-green-500 animate-pulse' : 'bg-red-500 animate-pulse'}`}></div>
