@@ -63,6 +63,23 @@ function App() {
         synth.speak(firstPart);
     };
 
+    // --- Narração de Início de Rodada ---
+    const speakStartMessage = () => {
+        if (!('speechSynthesis' in window)) return;
+        const synth = window.speechSynthesis;
+        const utterance = new SpeechSynthesisUtterance("A Próxima rodada vai começar");
+        
+        const voices = synth.getVoices();
+        const selectedVoice = voices.find(v => v.name.includes('Francisca'))
+            || voices.find(v => v.name.includes('Antonio'))
+            || voices.find(v => v.lang.includes('pt-BR'));
+
+        if (selectedVoice) utterance.voice = selectedVoice;
+        utterance.lang = 'pt-BR';
+        utterance.rate = 0.9;
+        synth.speak(utterance);
+    };
+
     // --- Música de Vitória ---
     const playVictoryMusic = () => {
         if (!audioUnlocked) return;
@@ -84,14 +101,7 @@ function App() {
         if (nextHour >= 20) return "AMANHÃ ÀS 09:00";
         return `${String(nextHour).padStart(2, '0')}:${String(nextMin).padStart(2, '0')}`;
     };
-
-    const getCurrentRaffleTime = () => {
-        const now = new Date();
-        const currentInterval = Math.floor(now.getMinutes() / 15) * 15;
-        return `${String(now.getHours()).padStart(2, '0')}:${String(currentInterval).padStart(2, '0')}`;
-    };
-
-    // --- Efeito Inicial (Relógio e Limpeza) ---
+// --- Efeito Inicial (Relógio e Limpeza) ---
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setNextRaffleTime(calculateRaffleSchedule());
@@ -130,11 +140,12 @@ function App() {
                 if (started) {
                     setIsStarted(true);
                     setShowStartMessage(true);
+                    speakStartMessage();
                     setTimeout(() => setShowStartMessage(false), 10000);
                 }
             } catch (e) { console.error(e); }
         };
-        const statusTimer = setInterval(checkStatus, 60000);
+        const statusTimer = setInterval(checkStatus, 15000);
         checkStatus();
         return () => clearInterval(statusTimer);
     }, [isStarted]);
@@ -212,7 +223,7 @@ function App() {
             {!audioUnlocked && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-xl">
                     <button onClick={unlockAudio} className="bg-yellow-500 hover:bg-yellow-400 text-black px-12 py-6 rounded-3xl font-black text-3xl shadow-[0_0_50px_rgba(234,179,8,0.4)] animate-pulse">
-                        🔊 ATIVAR SOM DO BINGO
+                        🔊 ATIVAR SOM
                     </button>
                 </div>
             )}
@@ -233,19 +244,19 @@ function App() {
             )}
             <div className="flex-1 flex flex-col items-center p-10 space-y-10 overflow-y-auto">
                 <h1 className="text-9xl font-black text-yellow-500 italic flex gap-x-20 uppercase tracking-tighter">
-                    <span>NEW</span><span>BINGO</span>
+                    <span>RINGO</span>
                 </h1>
                 <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl text-center">
                     <div className="flex items-center justify-center space-x-3 mb-2">
-                        <div className={`w-4 h-4 rounded-full ${isStarted ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
-                        <span className="text-2xl font-bold uppercase">{isStarted ? 'Rodada Em Andamento' : 'Aguardando próxima rodada'}</span>
+                        <div className={`w-4 h-4 rounded-full ${isStarted ? 'bg-green-500 animate-pulse' : 'bg-red-500 animate-pulse'}`}></div>
+                        <span className="text-2xl font-bold uppercase animate-pulse">{isStarted ? 'Rodada Em Andamento' : 'Aguardando próxima rodada'}</span>
                     </div>
                     <p className="text-slate-500 text-sm font-black tracking-widest">PRÓXIMA RODADA: {nextRaffleTime}</p>
                 </div>
                 {winners.length > 0 && (
                     <div className="w-full max-w-2xl bg-red-600 p-10 rounded-[3rem] border-8 border-white text-center animate-pulse shadow-[0_0_80px_rgba(220,38,38,0.6)]">
-                        <h2 className="text-5xl font-black italic mb-4 uppercase">BINGO!</h2>
-                        {winners.map((w, i) => <div key={i} className="text-6xl font-extrabold text-white drop-shadow-lg">{w.storeName}</div>)}
+                        <h2 className="text-5xl font-black italic mb-4 uppercase animate-pulse">BINGO!</h2>
+                        {winners.map((w, i) => <div key={i} className="text-6xl font-extrabold text-white drop-shadow-lg animate-pulse">- {w.storeName}</div>)}
                     </div>
                 )}
                 <div className="grid grid-cols-10 gap-4 p-10 bg-slate-900/50 rounded-[3rem] border border-slate-800">
@@ -256,9 +267,13 @@ function App() {
                         </div>
                     ))}
                 </div>
+                {/* Rodapé */}
+                <div className="text-slate-700 text-sm font-bold uppercase tracking-[0.5em] pb-8">
+                    Sorteios Automáticos • 09:00 - 19:00
+                </div>
             </div>
             <div className="w-96 bg-slate-900 border-l border-slate-800 p-8 flex flex-col h-screen shadow-2xl">
-                <h2 className="text-2xl font-black text-yellow-500 mb-8 uppercase italic tracking-widest border-b border-slate-800 pb-4 text-center">🏆 Premios do Dia</h2>
+                <h2 className="text-2xl font-black text-yellow-500 mb-8 uppercase italic tracking-widest border-b border-slate-800 pb-4 text-center animate-pulse">🏆 Prêmios do Dia</h2>
                 <div className="flex-1 space-y-4 overflow-y-auto pr-2 custom-scrollbar">
                     {dailyWinners.length > 0 ? dailyWinners.map((w, i) => (
                         <div key={i} className="bg-slate-800/40 p-5 rounded-3xl border border-slate-700">
@@ -267,7 +282,7 @@ function App() {
                                 <p className="text-xs text-slate-500 font-mono font-bold">
                                     HORÁRIO: {new Date(w.raffleDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                 </p>
-                                <p className="text-green-400 font-black text-xl tracking-tighter">R$ {w.prizeValue.toFixed(2)}</p>
+                                <p className="text-green-400 font-black text-xl tracking-tighter animate-pulse">R$ {w.prizeValue.toFixed(2)}</p>
                             </div>
                         </div>
                     )) : <p className="opacity-20 text-center mt-10 font-black uppercase tracking-widest text-xs">Vazio</p>}
