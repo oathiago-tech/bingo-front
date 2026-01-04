@@ -4,6 +4,7 @@ function App() {
     const [numbers, setNumbers] = useState([])
     const [winners, setWinners] = useState([])
     const [dailyWinners, setDailyWinners] = useState([])
+    const [dailyRaffles, setDailyRaffles] = useState([])
     const [nextRaffleTime, setNextRaffleTime] = useState('')
     const [currentBall, setCurrentBall] = useState(null)
     const [isStarted, setIsStarted] = useState(false)
@@ -58,7 +59,8 @@ function App() {
             return utterance;
         };
 
-        const firstPart = createUtterance(`Próximo Número.  .  .  .  . ${num}`);
+        const prefix = numbers.length === 0 ? "Primeiro Número" : "Próximo Número";
+        const firstPart = createUtterance(`${prefix}.  .  .  .  . ${num}`);
         firstPart.onend = () => {
             setTimeout(() => {
                 let secondText = (num >= 10)
@@ -157,6 +159,8 @@ function App() {
         return () => clearInterval(statusTimer);
     }, [isStarted]);
 
+    
+
     // --- 2. Ciclo de Polling Rápido (A cada segundo se isStarted === true) ---
     useEffect(() => {
         if (!isStarted) return;
@@ -165,13 +169,19 @@ function App() {
 
         const raffleLoop = async () => {
             while (isMounted && isStarted) {
-                try {
-                    // Chama /raffle a cada segundo
-                    const resRaffle = await fetch('/raffle');
-                    const data = await resRaffle.json();
+                    try {
+                        // Chama /raffle a cada segundo
+                        const resRaffle = await fetch('/raffle');
+                        const data = await resRaffle.json();
 
-                    if (Array.isArray(data) && data.length > 0) {
-                        const lastNum = Number(data[data.length - 1]);
+                        // Se o servidor retornar erro 500 informando que não há sorteio em andamento
+                        if (resRaffle.status === 500 || (data && data.code === 500)) {
+                            setIsStarted(false);
+                            break;
+                        }
+
+                        if (Array.isArray(data) && data.length > 0) {
+                            const lastNum = Number(data[data.length - 1]);
 
                         if (!numbersRef.current.includes(lastNum)) {
                             setNumbers(data.map(Number));
@@ -217,6 +227,13 @@ function App() {
                 try {
                     const res = await fetch('/winner/today');
                     if (res.ok) setDailyWinners(await res.json());
+
+                    const resRaffles = await fetch('/raffle/today');
+                    if (resRaffles.ok) {
+                        const data = await resRaffles.json();
+                        // Ordenar por horário
+                        setDailyRaffles(data.sort((a, b) => a.raffleDate.localeCompare(b.raffleDate)));
+                    }
                 } catch (e) { console.error(e); }
                 await new Promise(r => setTimeout(r, 10000));
             }
@@ -224,6 +241,12 @@ function App() {
         fetchDaily();
         return () => { isMounted = false; };
     }, []);
+
+    const getCurrentRaffleTime = () => {
+        const now = new Date();
+        const currentInterval = Math.floor(now.getMinutes() / 15) * 15;
+        return `${String(now.getHours()).padStart(2, '0')}:${String(currentInterval).padStart(2, '0')}`;
+    };
 
     return (
         <div className="flex min-h-screen bg-slate-950 text-white overflow-hidden font-sans">
@@ -249,19 +272,58 @@ function App() {
             {currentBall && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-xl">
                     <div className="text-center animate-bounce">
-                        <p className="text-2xl font-black mb-5 tracking-[0.5em] uppercase">PRÓXIMO NÚMERO</p>
                         <div className="w-80 h-80 bg-white text-slate-950 rounded-full flex items-center justify-center text-[10rem] font-black border-[12px] border-slate-200 shadow-2xl">
                             {currentBall}
                         </div>
                     </div>
                 </div>
             )}
+
+            {/* Barra Lateral Esquerda: Sorteios do Dia */}
+            <div className="w-80 bg-slate-900 border-r border-slate-800 p-6 flex flex-col h-screen shadow-5xl mt-20">
+                <h2 className="text-xl font-black text-yellow-500 mb-6 uppercase italic tracking-widest border-b border-slate-800 pb-4 text-center animate-pulse">📅 Sorteios de Hoje</h2>
+                <div className="flex-1 space-y-3 overflow-y-auto pr-2 custom-scrollbar">
+                    {dailyRaffles.length > 0 ? dailyRaffles
+                            .map((r, i) => {
+                                const raffleTime = new Date(r.raffleDate);
+                                const raffleTimeString = raffleTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                                const currentRaffleTimeString = getCurrentRaffleTime();
+                                
+                                const isActive = isStarted && raffleTimeString === currentRaffleTimeString;
+                                
+                                const now = new Date();
+                                const diffMins = (raffleTime - now) / (1000 * 60);
+                                const isPast = diffMins < 0 && !isActive;
+
+                                return (
+                                    <div key={i} className={`p-4 rounded-2xl border transition-all duration-500 flex justify-between items-center
+                                        ${isActive
+                                            ? 'bg-yellow-500 border-white scale-105 shadow-[0_0_20px_rgba(234,179,8,0.4)] z-10' 
+                                            : isPast 
+                                                ? 'bg-slate-800/10 border-slate-900 opacity-30 grayscale' 
+                                                : 'bg-slate-800/30 border-slate-800'
+                                        }`}>
+                                        <div className="flex flex-col">
+                                            <span className={`font-mono text-xl font-bold ${isActive ? 'text-black' : 'text-slate-300'}`}>
+                                                {raffleTimeString}
+                                            </span>
+                                            {isActive && <span className="text-[10px] font-black text-black animate-pulse">EM ANDAMENTO</span>}
+                                        </div>
+                                        <span className={`font-black text-lg ${isActive ? 'text-black' : 'text-green-500'}`}>
+                                            R$ {r.value.toFixed(2)}
+                                        </span>
+                                    </div>
+                                );
+                            }) : <p className="opacity-20 text-center mt-10 font-black uppercase tracking-widest text-xs">Carregando...</p>}
+                </div>
+            </div>
+
             <div className="flex-1 flex flex-col items-center p-10 space-y-10 overflow-y-auto mt-12">
                 <div className="text-center">
                     <h1 className="text-9xl font-black text-yellow-500 italic flex gap-x-20 uppercase tracking-tighter">
                         <span>RINGO</span>
                     </h1>
-                    <p className="text-yellow-500 font-black uppercase tracking-[0.3em] text-xl italic mt-[-15px]">
+                    <p className="text-yellow-500 font-black uppercase tracking-[0.3em] text-xl italic mt-[-15px] animate-bounce-rotate">
                         Seu dia de sorte
                     </p>
                 </div>
@@ -281,7 +343,7 @@ function App() {
                 <div className="grid grid-cols-10 gap-4 p-10 bg-slate-900/50 rounded-[3rem] border border-slate-800">
                     {Array.from({ length: 75 }, (_, i) => i + 1).map(n => (
                         <div key={n} className={`w-12 h-12 flex items-center justify-center rounded-full border-2 font-black text-xl transition-all duration-500
-                            ${numbers.includes(n) ? 'bg-white border-white text-slate-950 scale-110 shadow-[0_0_15px_rgba(255,255,255,0.5)]' : 'bg-slate-800/40 border-slate-700 text-slate-600'}`}>
+                            ${numbers.includes(n) ? 'bg-white border-white text-slate-950 scale-110 shadow-[0_0_15px_rgba(255,255,255,0.5)] animate-pulse' : 'bg-slate-800/40 border-slate-700 text-slate-600'}`}>
                             {n}
                         </div>
                     ))}
@@ -301,7 +363,7 @@ function App() {
                                 <p className="text-xs text-slate-500 font-mono font-bold">
                                     HORÁRIO: {new Date(w.raffleDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                 </p>
-                                <p className="text-green-400 font-black text-xl tracking-tighter animate-pulse">R$ {w.prizeValue.toFixed(2)}</p>
+                                <p className="text-green-400 font-black text-xl tracking-tighter animate-bounce">R$ {w.prizeValue.toFixed(2)}</p>
                             </div>
                         </div>
                     )) : <p className="opacity-20 text-center mt-10 font-black uppercase tracking-widest text-xs">Vazio</p>}

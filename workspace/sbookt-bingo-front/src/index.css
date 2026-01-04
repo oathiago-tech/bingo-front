@@ -1,15 +1,20 @@
 @import "tailwindcss";
 
 @layer utilities {
-    @keyframes blink {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0; }
-    }
-    .animate-blink {
-        animation: blink 1s infinite;
-    }
-}
+        @keyframes bounce-rotate {
+            /* 0% a 20% é o tempo do movimento (1 segundo de 5) */
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0) rotate(0deg); }
+            10% { transform: translateY(40px) rotate(360deg); }
+            20% { transform: translateY(0) rotate(720deg); }
+            /* De 21% a 100% ela fica parada (os outros 4 segundos) */
+        }
+        .animate-bounce-rotate {
+            animation: bounce-rotate 5s infinite ease-in-out;
+        }
 
+        @keyframes blink {
+        }
+}
 body {
     margin: 0;
     @apply bg-slate-900 text-white min-h-screen;
