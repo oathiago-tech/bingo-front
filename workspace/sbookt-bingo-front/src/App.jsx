@@ -40,7 +40,7 @@ function App() {
     };
 
     // --- Narração (Francisca - Microsoft Edge) ---
-    const speakNumber = (num) => {
+    const speakNumber = (num, currentCount) => {
         if (!('speechSynthesis' in window)) return;
         const synth = window.speechSynthesis;
         synth.cancel();
@@ -48,7 +48,7 @@ function App() {
         const createUtterance = (text) => {
             const utterance = new SpeechSynthesisUtterance(text);
             const voices = synth.getVoices();
-            const selectedVoice = voices.find(v => v.name.includes('Francisca'))
+            const selectedVoice = voices.find(v => v.name.includes('Antonio'))
                 || voices.find(v => v.name.includes('Antonio'))
                 || voices.find(v => v.name.includes('Google') && v.lang.includes('pt-BR'))
                 || voices.find(v => v.lang.includes('pt-BR'));
@@ -59,8 +59,10 @@ function App() {
             return utterance;
         };
 
-        const prefix = numbers.length === 0 ? "Primeiro Número" : "Próximo Número";
+        // Usa o valor passado via argumento em vez do estado direto
+        const prefix = currentCount === 0 ? "Primeiro Número" : "Próximo Número";
         const firstPart = createUtterance(`${prefix}.  .  .  .  . ${num}`);
+        
         firstPart.onend = () => {
             setTimeout(() => {
                 let secondText = (num >= 10)
@@ -79,7 +81,7 @@ function App() {
         const utterance = new SpeechSynthesisUtterance("A Próxima rodada vai começar");
         
         const voices = synth.getVoices();
-        const selectedVoice = voices.find(v => v.name.includes('Francisca'))
+        const selectedVoice = voices.find(v => v.name.includes('Antonio'))
             || voices.find(v => v.name.includes('Antonio'))
             || voices.find(v => v.lang.includes('pt-BR'));
 
@@ -265,12 +267,12 @@ function App() {
                 </div>
             )}
             {showStartMessage && (
-                <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-yellow-500 text-black px-24 py-12 rounded-[3rem] font-black text-6xl animate-bounce border-[10px] border-white shadow-[0_0_100px_rgba(234,179,8,0.6)]">
+                <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-yellow-500 text-black px-16 py-12 rounded-[3rem] font-black text-4xl animate-bounce border-[10px] border-white shadow-[0_0_100px_rgba(234,179,8,0.6)]">
                     A PRÓXIMA RODADA VAI COMEÇAR!
                 </div>
             )}
             {currentBall && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-xl">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-sm">
                     <div className="text-center animate-bounce">
                         <div className="w-80 h-80 bg-white text-slate-950 rounded-full flex items-center justify-center text-[10rem] font-black border-[12px] border-slate-200 shadow-2xl">
                             {currentBall}
@@ -307,7 +309,7 @@ function App() {
                                             <span className={`font-mono text-xl font-bold ${isActive ? 'text-black' : 'text-slate-300'}`}>
                                                 {raffleTimeString}
                                             </span>
-                                            {isActive && <span className="text-[10px] font-black text-black animate-pulse">EM ANDAMENTO</span>}
+                                            {isActive && <span className="text-[8px] font-black text-black animate-pulse">EM ANDAMENTO</span>}
                                         </div>
                                         <span className={`font-black text-lg ${isActive ? 'text-black' : 'text-green-500'}`}>
                                             R$ {r.value.toFixed(2)}
@@ -335,9 +337,9 @@ function App() {
                     <p className="text-slate-500 text-sm font-black tracking-widest">PRÓXIMA RODADA: {nextRaffleTime}</p>
                 </div>
                 {winners.length > 0 && (
-                    <div className="w-full max-w-2xl bg-red-600 p-10 rounded-[3rem] border-8 border-white text-center animate-pulse shadow-[0_0_80px_rgba(220,38,38,0.6)]">
-                        <h2 className="text-5xl font-black italic mb-4 uppercase animate-pulse">BINGO!</h2>
-                        {winners.map((w, i) => <div key={i} className="text-6xl font-extrabold text-white drop-shadow-lg animate-pulse">- {w.storeName}</div>)}
+                    <div className="w-full max-w-5xl bg-red-600 p-10 rounded-[3rem] border-8 border-white text-center animate-pulse shadow-[0_0_80px_rgba(220,38,38,0.6)]">
+                        <h2 className="text-3xl font-black italic mb-4 uppercase animate-pulse">RINGO!</h2>
+                        {winners.map((w, i) => <div key={i} className="text-2xl font-extrabold text-white drop-shadow-lg animate-pulse">- {w.storeName}</div>)}
                     </div>
                 )}
                 <div className="grid grid-cols-10 gap-4 p-10 bg-slate-900/50 rounded-[3rem] border border-slate-800">
