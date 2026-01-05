@@ -1,102 +1,27 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 
 function MobileBingo() {
-    const navigate = useNavigate();
     const [numbers, setNumbers] = useState([])
     const [winners, setWinners] = useState([])
     const [dailyWinners, setDailyWinners] = useState([])
     const [dailyRaffles, setDailyRaffles] = useState([])
-    const [nextRaffleTime, setNextRaffleTime] = useState('')
     const [currentBall, setCurrentBall] = useState(null)
     const [isStarted, setIsStarted] = useState(false)
-    const [audioUnlocked, setAudioUnlocked] = useState(false)
+    const [showStartMessage, setShowStartMessage] = useState(false)
     const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString())
 
-    // Estados para os Modais
     const [showRafflesModal, setShowRafflesModal] = useState(false)
     const [showWinnersModal, setShowWinnersModal] = useState(false)
 
     const numbersRef = useRef([])
-    const audioInstanceRef = useRef(new Audio('/victory.mp3'))
 
     useEffect(() => { numbersRef.current = numbers }, [numbers])
 
-    // --- Lógica de Áudio e Relógio ---
+    // --- Relógio ---
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date().toLocaleTimeString()), 1000);
-
-        const unlockAudio = () => {
-            const audio = audioInstanceRef.current;
-            audio.play().then(() => {
-                audio.pause();
-                audio.currentTime = 0;
-                setAudioUnlocked(true);
-                console.log("Áudio Mobile Desbloqueado");
-            }).catch(() => {});
-
-            if ('speechSynthesis' in window) {
-                window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
-            }
-            window.removeEventListener('touchstart', unlockAudio);
-        };
-
-        window.addEventListener('touchstart', unlockAudio);
-        return () => { clearInterval(timer); window.removeEventListener('touchstart', unlockAudio); };
+        return () => clearInterval(timer);
     }, []);
-
-    // --- Narração (Francisca/Antonio - Otimizado para Mobile) ---
-    const speakNumber = (num, currentCount) => {
-        if (!('speechSynthesis' in window)) return;
-        const synth = window.speechSynthesis;
-        synth.cancel();
-
-        const createUtterance = (text) => {
-            const utterance = new SpeechSynthesisUtterance(text);
-            const voices = synth.getVoices();
-            const selectedVoice = voices.find(v => v.name.includes('Antonio'))
-                || voices.find(v => v.name.includes('Google') && v.lang.includes('pt-BR'))
-                || voices.find(v => v.lang.includes('pt-BR'));
-
-            if (selectedVoice) utterance.voice = selectedVoice;
-            utterance.lang = 'pt-BR';
-            utterance.rate = 0.75;
-            return utterance;
-        };
-
-        const prefix = currentCount === 0 ? "Primeiro Número" : "Próximo Número";
-        const firstPart = createUtterance(`${prefix}. . . . ${num}`);
-
-        firstPart.onend = () => {
-            setTimeout(() => {
-                let secondText = (num >= 10)
-                    ? `${num.toString()[0]} . . . ${num.toString()[1]}`
-                    : `${num}`;
-                synth.speak(createUtterance(secondText));
-            }, 800);
-        };
-        synth.speak(firstPart);
-    };
-
-    const speakStartMessage = () => {
-        if (!('speechSynthesis' in window)) return;
-        const synth = window.speechSynthesis;
-        const utterance = new SpeechSynthesisUtterance("A Próxima rodada vai começar");
-        const voices = synth.getVoices();
-        const selectedVoice = voices.find(v => v.name.includes('Antonio')) || voices.find(v => v.lang.includes('pt-BR'));
-        if (selectedVoice) utterance.voice = selectedVoice;
-        utterance.lang = 'pt-BR';
-        utterance.rate = 0.9;
-        synth.speak(utterance);
-    };
-
-    const playVictoryMusic = () => {
-        const audio = audioInstanceRef.current;
-        audio.volume = 0.7;
-        audio.loop = false;
-        audio.currentTime = 0;
-        audio.play().catch(e => console.error("Erro música vitória:", e));
-    };
 
     const getCurrentRaffleTime = () => {
         const now = new Date();
@@ -114,7 +39,8 @@ function MobileBingo() {
                     const started = await resStarted.json();
 
                     if (started && !isStarted) {
-                        speakStartMessage();
+                        setShowStartMessage(true);
+                        setTimeout(() => setShowStartMessage(false), 10000);
                     }
                     setIsStarted(started);
 
@@ -154,22 +80,19 @@ function MobileBingo() {
                     if (Array.isArray(data) && data.length > 0) {
                         const last = Number(data[data.length - 1]);
                         if (!numbersRef.current.includes(last)) {
-                            const prevCount = numbersRef.current.length;
                             setNumbers(data.map(Number));
                             setCurrentBall(last);
-                            speakNumber(last, prevCount);
 
                             const resWin = await fetch('/raffle/validate-winners');
                             const winText = await resWin.text();
-                            if (winText) {
+                            if (winText && winText.trim().length > 0) {
                                 const winnersData = JSON.parse(winText);
                                 if (Array.isArray(winnersData) && winnersData.length > 0) {
                                     setCurrentBall(null);
                                     setWinners(winnersData);
-                                    playVictoryMusic();
                                     await sleep(20000);
-                                    audioInstanceRef.current.pause();
                                     setWinners([]);
+                                    setNumbers([]);
                                     setIsStarted(false);
                                     break;
                                 }
@@ -188,6 +111,11 @@ function MobileBingo() {
 
     return (
         <div className="flex flex-col h-screen bg-slate-950 text-white font-sans overflow-hidden">
+            {showStartMessage && (
+                <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[120] bg-yellow-500 text-black px-8 py-6 rounded-3xl font-black text-xl animate-bounce border-4 border-white shadow-2xl text-center w-[80%]">
+                    A PRÓXIMA RODADA VAI COMEÇAR!
+                </div>
+            )}
             {/* Header com Título, Slogan e Relógio */}
             <div className="p-4 bg-slate-900 border-b border-slate-800 flex justify-between items-center z-50">
                 <div className="flex flex-col">
@@ -208,7 +136,7 @@ function MobileBingo() {
                         <h2 className="text-xl font-black text-yellow-500 uppercase">Sorteios de Hoje</h2>
                         <button onClick={() => setShowRafflesModal(false)} className="text-3xl">&times;</button>
                     </div>
-                    <div className="flex-1 space-y-3 overflow-y-auto pr-2 custom-scrollbar">
+                    <div className="flex-1 space-y-3 overflow-y-auto custom-scrollbar">
                         {dailyRaffles.map((r, i) => {
                             const timeString = new Date(r.raffleDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                             const isActive = isStarted && timeString === getCurrentRaffleTime();
@@ -229,7 +157,7 @@ function MobileBingo() {
                         <h2 className="text-xl font-black text-yellow-500 uppercase">Ganhadores de Hoje</h2>
                         <button onClick={() => setShowWinnersModal(false)} className="text-3xl">&times;</button>
                     </div>
-                    <div className="flex-1 space-y-3 overflow-y-auto pr-2 custom-scrollbar">
+                    <div className="flex-1 space-y-3 overflow-y-auto custom-scrollbar">
                         {dailyWinners.length > 0 ? dailyWinners.map((w, i) => (
                             <div key={i} className="bg-slate-800/40 p-4 rounded-2xl border border-slate-700">
                                 <p className="font-black text-white">{w.storeName}</p>
@@ -245,7 +173,7 @@ function MobileBingo() {
 
             <main className="flex-1 p-4 space-y-4 overflow-y-auto">
                 {currentBall && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center backdrop-blur-sm">
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm">
                         <div className="w-64 h-64 bg-white rounded-full flex items-center justify-center text-9xl font-black text-slate-950 border-[12px] border-yellow-500 animate-bounce shadow-2xl">
                             {currentBall}
                         </div>
@@ -260,7 +188,7 @@ function MobileBingo() {
                 )}
 
                 <div className="bg-slate-900 p-3 rounded-2xl border border-slate-800 flex items-center justify-center space-x-2 shadow-lg">
-                    <div className={`w-2 h-2 rounded-full ${isStarted ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
+                    <div className={`w-2 h-2 rounded-full ${isStarted ? 'bg-green-500 animate-pulse' : 'bg-red-500 animate-pulse'}`}></div>
                     <span className="text-[10px] font-black uppercase tracking-tighter">{isStarted ? 'Rodada em Andamento' : 'Aguardando Sorteio'}</span>
                 </div>
 
@@ -274,26 +202,17 @@ function MobileBingo() {
                 </div>
             </main>
 
-            {/* Navegação Mobile Inferior */}
+            {/* Menu de Ações Mobile */}
             <div className="p-4 bg-slate-900 border-t border-slate-800 flex justify-around items-center sticky bottom-0 z-50">
                 <button onClick={() => setShowRafflesModal(true)} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
                     <span className="text-xl">📅</span>
                     <span className="text-[10px] font-black uppercase text-slate-400">Sorteios</span>
-                </button>
-                <button onClick={() => navigate('/purchase')} className="bg-yellow-500 text-black font-black px-6 py-3 rounded-2xl shadow-xl active:scale-95 text-xs flex items-center gap-2">
-                    🎟️ REGISTRAR
                 </button>
                 <button onClick={() => setShowWinnersModal(true)} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
                     <span className="text-xl">🏆</span>
                     <span className="text-[10px] font-black uppercase text-slate-400">Prêmios</span>
                 </button>
             </div>
-
-            {!audioUnlocked && (
-                <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[120] bg-yellow-500 text-black px-8 py-4 rounded-full font-black text-sm shadow-[0_0_50px_rgba(234,179,8,0.5)] animate-pulse">
-                    👆 TOQUE PARA ATIVAR O SOM
-                </div>
-            )}
         </div>
     );
 }

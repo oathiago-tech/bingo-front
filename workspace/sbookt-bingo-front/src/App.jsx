@@ -235,11 +235,6 @@ function App() {
 
     return (
         <div className="flex h-screen bg-slate-950 text-white overflow-hidden font-sans">
-            {!audioUnlocked && (
-                <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[100] bg-yellow-500/20 text-yellow-500 px-4 py-1 rounded-full text font-black uppercase animate-pulse border border-yellow-500/30">
-                    ⚠️ Clique em qualquer lugar para ativar o som
-                </div>
-            )}
 
             {showStartMessage && (
                 <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[60] bg-yellow-500 text-black px-16 py-12 rounded-[3rem] font-black text-4xl animate-bounce border-[10px] border-white shadow-[0_0_100px_rgba(234,179,8,0.6)]">
