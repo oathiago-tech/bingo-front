@@ -1,25 +1,33 @@
-
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import App from './App.jsx'
-import Purchase from './Purchase.jsx'
-import MobileBingo from './MobileBingo.jsx'
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import './index.css'
+import App from './App.jsx'
+import MobileBingo from './MobileBingo.jsx'
+import Purchase from './Purchase.jsx'
+import RaffleAdmin from './RaffleAdmin.jsx'
 
-const Home = () => {
-    // Detecta se é mobile (largura < 768px)
-    const isMobile = window.innerWidth < 768;
-    return isMobile ? <MobileBingo /> : <App />;
-}
+const router = createBrowserRouter([
+    {
+        path: "/",
+        element: <App />,
+    },
+    {
+        path: "/mobile",
+        element: <MobileBingo />,
+    },
+    {
+        path: "/purchase",
+        element: <Purchase />,
+    },
+    {
+        path: "/admin",
+        element: <RaffleAdmin />,
+    }
+]);
 
-ReactDOM.createRoot(document.getElementById('root')).render(
-    <React.StrictMode>
-        <BrowserRouter>
-            <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/purchase" element={<Purchase />} />
-            </Routes>
-        </BrowserRouter>
-    </React.StrictMode>,
+createRoot(document.getElementById('root')).render(
+    <StrictMode>
+        <RouterProvider router={router} />
+    </StrictMode>,
 )

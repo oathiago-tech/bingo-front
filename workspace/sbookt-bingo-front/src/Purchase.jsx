@@ -1,39 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-// Funções Utilitárias
-const generateTimeOptions = () => {
-    const times = [];
-    for (let hour = 9; hour <= 19; hour++) {
-        ['00', '30'].forEach(min => {
-            times.push(`${String(hour).padStart(2, '0')}:${min}`);
-        });
-    }
-    return times;
-};
-
-const getNextWorkDays = () => {
-    const days = [];
-    let current = new Date();
-    while (days.length < 10) {
-        const dayOfWeek = current.getDay();
-        if (dayOfWeek !== 0 && dayOfWeek !== 6) { // Pula 0 (Dom) e 6 (Sab)
-            days.push(new Date(current));
-        }
-        current.setDate(current.getDate() + 1);
-    }
-    return days;
-};
-
 export default function Purchase() {
     const navigate = useNavigate();
     const [sheets, setSheets] = useState([]);
     const [loading, setLoading] = useState(false);
     const [pendingRaffles, setPendingRaffles] = useState([]);
     const [selectedRaffle, setSelectedRaffle] = useState(null);
+    const [stores, setStores] = useState([]);
+    const [storeSearch, setStoreSearch] = useState('');
+    const [selectedStore, setSelectedStore] = useState(null);
+    const [showStoreResults, setShowStoreResults] = useState(false);
     const [selectedSheet, setSelectedSheet] = useState(null);
     const [formData, setFormData] = useState({
-        storeId: '',
         amount: 1
     });
 
@@ -42,14 +21,30 @@ export default function Purchase() {
             try {
                 const res = await fetch('/raffle/pending');
                 const data = await res.json();
-                // Ordenar por data para facilitar a escolha
                 setPendingRaffles(data.sort((a, b) => a.raffleDate.localeCompare(b.raffleDate)));
-            } catch (err) {
-                console.error("Erro ao carregar sorteios pendentes", err);
-            }
+            } catch (err) { console.error(err); }
         };
         loadPending();
     }, []);
+
+    useEffect(() => {
+        if (storeSearch.length < 3) {
+            setStores([]);
+            setShowStoreResults(false);
+            return;
+        }
+        const timer = setTimeout(async () => {
+            try {
+                const res = await fetch(`/store/search?name=${encodeURIComponent(storeSearch)}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setStores(data);
+                    setShowStoreResults(true);
+                }
+            } catch (err) { console.error(err); }
+        }, 400);
+        return () => clearTimeout(timer);
+    }, [storeSearch]);
 
     const printAllSheets = () => {
         if (sheets.length === 0) return;
@@ -98,8 +93,8 @@ export default function Purchase() {
 
     const handleCreateSheets = async (e) => {
         e.preventDefault();
-        if (!selectedRaffle) {
-            alert("Por favor, selecione um sorteio disponível.");
+        if (!selectedRaffle || !selectedStore) {
+            alert("Por favor, selecione uma loja e um sorteio.");
             return;
         }
         setLoading(true);
@@ -107,6 +102,7 @@ export default function Purchase() {
             const dateObj = new Date(selectedRaffle.raffleDate);
             const payload = {
                 ...formData,
+                storeId: selectedStore.id,
                 raffleDay: selectedRaffle.raffleDate.split('T')[0],
                 raffleHour: dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             };
@@ -172,10 +168,38 @@ export default function Purchase() {
                 <div className="bg-slate-900 p-8 rounded-[2rem] border border-slate-800 shadow-xl self-start">
                     <h2 className="text-4xl font-black text-yellow-500 mb-8 uppercase italic tracking-tighter">Gerar Cartelas</h2>
                     <form onSubmit={handleCreateSheets} className="space-y-6">
-                            <div>
-                                <label className="block text-xs font-black uppercase text-slate-500 mb-2">ID da Loja</label>
-                                <input required type="number" className="w-full bg-slate-800 border border-slate-700 p-5 rounded-2xl outline-none focus:border-yellow-500 text-xl font-bold"
-                                       value={formData.storeId} onChange={e => setFormData({...formData, storeId: parseInt(e.target.value) || ''})} />
+                            <div className="relative">
+                                <label className="block text-xs font-black uppercase text-slate-500 mb-2">Nome da Loja</label>
+                                <input 
+                                    required 
+                                    type="text" 
+                                    placeholder="Digite ao menos 3 caracteres..."
+                                    className="w-full bg-slate-800 border border-slate-700 p-5 rounded-2xl outline-none focus:border-yellow-500 text-xl font-bold"
+                                    value={selectedStore ? selectedStore.name : storeSearch} 
+                                    onChange={e => {
+                                        setStoreSearch(e.target.value);
+                                        setSelectedStore(null);
+                                    }} 
+                                    onFocus={() => storeSearch.length >= 3 && setShowStoreResults(true)}
+                                />
+                                {showStoreResults && stores.length > 0 && !selectedStore && (
+                                    <div className="absolute z-50 w-full mt-2 bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl max-h-60 overflow-y-auto overflow-x-hidden border-t-4 border-t-yellow-500">
+                                        {stores.map(s => (
+                                            <button
+                                                key={s.id}
+                                                type="button"
+                                                onClick={() => {
+                                                    setSelectedStore(s);
+                                                    setShowStoreResults(false);
+                                                }}
+                                                className="w-full text-left p-5 hover:bg-yellow-500 hover:text-black font-bold transition-colors border-b border-slate-700 last:border-0 flex justify-between items-center group"
+                                            >
+                                                <span>{s.name}</span>
+                                                <span className="text-[10px] opacity-50 group-hover:opacity-100 uppercase italic">Selecionar →</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
 
                             <div>
@@ -207,19 +231,16 @@ export default function Purchase() {
                                             </button>
                                         );
                                     })}
-                                    {pendingRaffles.length === 0 && (
-                                        <p className="col-span-full text-center text-slate-600 py-4 italic">Nenhum sorteio pendente encontrado.</p>
-                                    )}
                                 </div>
                             </div>
 
-                            <div className="">
+                            <div>
                                 <label className="block text-xs font-black uppercase text-slate-500 mb-2">Quantidade de Cartelas</label>
                                 <input required type="number" min="1" className="w-full bg-slate-800 border border-slate-700 p-5 rounded-2xl outline-none focus:border-yellow-500 text-xl font-bold"
                                        value={formData.amount} onChange={e => setFormData({...formData, amount: parseInt(e.target.value) || 1})} />
                             </div>
 
-                            <button type="submit" disabled={loading || !selectedRaffle} className="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-black py-6 rounded-2xl uppercase text-2xl shadow-lg transition-all disabled:opacity-50">
+                            <button type="submit" disabled={loading || !selectedRaffle || !selectedStore} className="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-black py-6 rounded-2xl uppercase text-2xl shadow-lg transition-all disabled:opacity-50">
                                 {loading ? 'Processando...' : 'Confirmar Registro'}
                             </button>
                         </form>
