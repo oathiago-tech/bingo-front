@@ -75,22 +75,16 @@ export const speakStartMessage = () => {
     synth.speak(utterance);
 };
 
+// --- Lógica de Horários ---
 export const calculateRaffleSchedule = () => {
     const now = new Date();
     const hour = now.getHours();
     const minutes = now.getMinutes();
-
     if (hour < 9 || hour >= 19) return "09:00";
-
     const nextInterval = Math.ceil((minutes + 0.1) / 15) * 15;
     let nextHour = hour;
     let nextMin = nextInterval;
-
-    if (nextInterval === 60) {
-        nextHour += 1;
-        nextMin = 0;
-    }
-
+    if (nextInterval === 60) { nextHour += 1; nextMin = 0; }
     if (nextHour >= 19 && nextMin > 0) return "09:00";
     return `${String(nextHour).padStart(2, '0')}:${String(nextMin).padStart(2, '0')}`;
 };
@@ -99,4 +93,24 @@ export const getCurrentRaffleTime = () => {
     const now = new Date();
     const currentInterval = Math.floor(now.getMinutes() / 15) * 15;
     return `${String(now.getHours()).padStart(2, '0')}:${String(currentInterval).padStart(2, '0')}`;
+};
+
+// --- Requisições API ---
+export const fetchStatus = async () => {
+    try {
+        const res = await fetch('/raffle/is-started');
+        return await res.json();
+    } catch (e) { return false; }
+};
+
+export const fetchDailyData = async () => {
+    try {
+        const [resWinners, resRaffles] = await Promise.all([
+            fetch('/winner/today'),
+            fetch('/raffle/today')
+        ]);
+        const winners = resWinners.ok ? await resWinners.json() : [];
+        const raffles = resRaffles.ok ? await resRaffles.json() : [];
+        return { winners, raffles: raffles.sort((a, b) => a.raffleDate.localeCompare(b.raffleDate)) };
+    } catch (e) { return { winners: [], raffles: [] }; }
 };
