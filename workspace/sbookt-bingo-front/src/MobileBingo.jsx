@@ -9,19 +9,79 @@ function MobileBingo() {
     const [isStarted, setIsStarted] = useState(false)
     const [showStartMessage, setShowStartMessage] = useState(false)
     const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString())
+    const [audioUnlocked, setAudioUnlocked] = useState(false);
 
     const [showRafflesModal, setShowRafflesModal] = useState(false)
     const [showWinnersModal, setShowWinnersModal] = useState(false)
 
     const numbersRef = useRef([])
+    const audioInstanceRef = useRef(new Audio('/victory.mp3'));
 
     useEffect(() => { numbersRef.current = numbers }, [numbers])
 
-    // --- Relógio ---
-    useEffect(() => {
-        const timer = setInterval(() => setCurrentTime(new Date().toLocaleTimeString()), 1000);
-        return () => clearInterval(timer);
-    }, []);
+    const speakNumber = (num, currentCount) => {
+        if (!('speechSynthesis' in window)) return;
+        const synth = window.speechSynthesis;
+        synth.cancel();
+
+        const createUtterance = (text) => {
+            const utterance = new SpeechSynthesisUtterance(text);
+            const voices = synth.getVoices();
+            const selectedVoice = voices.find(v => v.name.includes('Antonio'))
+                || voices.find(v => v.name.includes('Google') && v.lang.includes('pt-BR'))
+                || voices.find(v => v.lang.includes('pt-BR'));
+
+            if (selectedVoice) utterance.voice = selectedVoice;
+            utterance.lang = 'pt-BR';
+            utterance.rate = 0.70;
+            return utterance;
+        };
+
+        const speakStartMessage = () => {
+            if (!('speechSynthesis' in window)) return;
+            const synth = window.speechSynthesis;
+            const utterance = new SpeechSynthesisUtterance("A Próxima rodada vai começar");
+            const voices = synth.getVoices();
+            const selectedVoice = voices.find(v => v.name.includes('Antonio')) || voices.find(v => v.lang.includes('pt-BR'));
+            if (selectedVoice) utterance.voice = selectedVoice;
+            utterance.lang = 'pt-BR';
+            utterance.rate = 0.9;
+            synth.speak(utterance);
+        };
+
+        const prefix = currentCount === 0 ? "Primeiro Número" : "Próximo Número";
+        const firstPart = createUtterance(`${prefix}.  .  .  .  . ${num}`);
+
+        firstPart.onend = () => {
+            setTimeout(() => {
+                let secondText = (num >= 10)
+                    ? `${num.toString()[0]} . . . ${num.toString()[1]}`
+                    : `${num}`;
+                synth.speak(createUtterance(secondText));
+            }, 1000);
+        };
+        synth.speak(firstPart);
+    };
+
+    const speakStartMessage = () => {
+        if (!('speechSynthesis' in window)) return;
+        const synth = window.speechSynthesis;
+        const utterance = new SpeechSynthesisUtterance("A Próxima rodada vai começar");
+        const voices = synth.getVoices();
+        const selectedVoice = voices.find(v => v.name.includes('Antonio')) || voices.find(v => v.lang.includes('pt-BR'));
+        if (selectedVoice) utterance.voice = selectedVoice;
+        utterance.lang = 'pt-BR';
+        utterance.rate = 0.9;
+        synth.speak(utterance);
+    };
+
+    const playVictoryMusic = () => {
+        const audio = audioInstanceRef.current;
+        audio.volume = 0.8;
+        audio.loop = false;
+        audio.currentTime = 0;
+        audio.play().catch(e => console.error("Erro vitória mobile:", e));
+    };
 
     const getCurrentRaffleTime = () => {
         const now = new Date();
@@ -29,68 +89,83 @@ function MobileBingo() {
         return `${String(now.getHours()).padStart(2, '0')}:${String(currentInterval).padStart(2, '0')}`;
     };
 
+    // --- Lógica de Áudio e Relógio ---
+    useEffect(() => {
+        const timer = setInterval(() => setCurrentTime(new Date().toLocaleTimeString()), 1000);
+        return () => clearInterval(timer);
+    }, []);
+
+    const unlockAudioAction = () => {
+        // Desbloqueia Música
+        const audio = audioInstanceRef.current;
+        audio.play().then(() => {
+            audio.pause();
+            audio.currentTime = 0;
+        }).catch(() => {});
+
+        // Desbloqueia Narração (Estratégia iOS)
+        if ('speechSynthesis' in window) {
+            const synth = window.speechSynthesis;
+            const ut = new SpeechSynthesisUtterance(" "); // Espaço para "acordar" o motor
+            ut.volume = 0;
+            synth.speak(ut);
+        }
+
+        setAudioUnlocked(true);
+        console.log("Áudio e Voz Desbloqueados via clique");
+    };
+
     // --- Polling de Status e Dados ---
     useEffect(() => {
-        let isMounted = true;
-        const fetchData = async () => {
-            while (isMounted) {
-                try {
-                    const resStarted = await fetch('/raffle/is-started');
-                    const started = await resStarted.json();
-
-                    if (started && !isStarted) {
-                        setShowStartMessage(true);
-                        setTimeout(() => setShowStartMessage(false), 10000);
-                    }
-                    setIsStarted(started);
-
-                    const resWinToday = await fetch('/winner/today');
-                    if (resWinToday.ok) setDailyWinners(await resWinToday.json());
-
-                    const resRafToday = await fetch('/raffle/today');
-                    if (resRafToday.ok) {
-                        const data = await resRafToday.json();
-                        setDailyRaffles(data.sort((a, b) => a.raffleDate.localeCompare(b.raffleDate)));
-                    }
-                } catch (e) { console.error(e); }
-                await new Promise(r => setTimeout(r, 10000));
-            }
+        const checkStatus = async () => {
+            if (isStarted) return;
+            try {
+                const res = await fetch('/raffle/is-started');
+                const started = await res.json();
+                if (started) {
+                    setIsStarted(true);
+                    setShowStartMessage(true);
+                    speakStartMessage();
+                    setTimeout(() => setShowStartMessage(false), 10000);
+                }
+            } catch (e) { console.error(e); }
         };
-        fetchData();
-        return () => { isMounted = false; };
+        const statusTimer = setInterval(checkStatus, 15000);
+        checkStatus();
+        return () => clearInterval(statusTimer);
     }, [isStarted]);
 
-    // --- Polling Rápido do Bingo ---
     useEffect(() => {
         if (!isStarted) return;
         let isMounted = true;
         const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
-        const loop = async () => {
+        const raffleLoop = async () => {
             while (isMounted && isStarted) {
                 try {
-                    const res = await fetch('/raffle');
-                    const data = await res.json();
-
-                    if (res.status === 500 || (data && data.code === 500)) {
+                    const resRaffle = await fetch('/raffle');
+                    const data = await resRaffle.json();
+                    if (resRaffle.status === 500 || (data && data.code === 500)) {
                         setIsStarted(false);
                         break;
                     }
-
                     if (Array.isArray(data) && data.length > 0) {
-                        const last = Number(data[data.length - 1]);
-                        if (!numbersRef.current.includes(last)) {
+                        const lastNum = Number(data[data.length - 1]);
+                        if (!numbersRef.current.includes(lastNum)) {
+                            const prevCount = numbersRef.current.length;
                             setNumbers(data.map(Number));
-                            setCurrentBall(last);
-
+                            setCurrentBall(lastNum);
+                            speakNumber(lastNum, prevCount);
                             const resWin = await fetch('/raffle/validate-winners');
                             const winText = await resWin.text();
-                            if (winText && winText.trim().length > 0) {
+                            if (winText) {
                                 const winnersData = JSON.parse(winText);
                                 if (Array.isArray(winnersData) && winnersData.length > 0) {
                                     setCurrentBall(null);
                                     setWinners(winnersData);
-                                    await sleep(20000);
+                                    playVictoryMusic();
+                                    await sleep(30000);
+                                    audioInstanceRef.current.pause();
                                     setWinners([]);
                                     setNumbers([]);
                                     setIsStarted(false);
@@ -101,16 +176,46 @@ function MobileBingo() {
                             setCurrentBall(null);
                         }
                     }
-                } catch (e) {}
-                await sleep(2000);
+                } catch (e) { console.error(e); }
+                await sleep(1000);
             }
         };
-        loop();
+        raffleLoop();
         return () => { isMounted = false; };
     }, [isStarted]);
 
+    useEffect(() => {
+        let isMounted = true;
+        const fetchDaily = async () => {
+            while (isMounted) {
+                try {
+                    const res = await fetch('/winner/today');
+                    if (res.ok) setDailyWinners(await res.json());
+                    const resRaffles = await fetch('/raffle/today');
+                    if (resRaffles.ok) {
+                        const data = await resRaffles.json();
+                        setDailyRaffles(data.sort((a, b) => a.raffleDate.localeCompare(b.raffleDate)));
+                    }
+                } catch (e) { console.error(e); }
+                await new Promise(r => setTimeout(r, 10000));
+            }
+        };
+        fetchDaily();
+        return () => { isMounted = false; };
+    }, []);
+
     return (
         <div className="flex flex-col h-screen bg-slate-950 text-white font-sans overflow-hidden">
+            {!audioUnlocked && (
+                <div className="fixed inset-0 z-[200] bg-black/95 backdrop-blur-xl flex items-center justify-center p-6 text-center">
+                    <button
+                        onClick={unlockAudioAction}
+                        className="bg-yellow-500 text-black px-12 py-6 rounded-full font-black text-2xl animate-pulse shadow-[0_0_50px_rgba(234,179,8,0.4)] border-4 border-white"
+                    >
+                        🔊 ATIVAR SOM
+                    </button>
+                </div>
+            )}
             {showStartMessage && (
                 <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[120] bg-yellow-500 text-black px-8 py-6 rounded-3xl font-black text-xl animate-bounce border-4 border-white shadow-2xl text-center w-[80%]">
                     A PRÓXIMA RODADA VAI COMEÇAR!
@@ -173,7 +278,7 @@ function MobileBingo() {
 
             <main className="flex-1 p-4 space-y-4 overflow-y-auto">
                 {currentBall && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm">
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center  backdrop-blur-sm">
                         <div className="w-64 h-64 bg-white rounded-full flex items-center justify-center text-9xl font-black text-slate-950 border-[12px] border-yellow-500 animate-bounce shadow-2xl">
                             {currentBall}
                         </div>

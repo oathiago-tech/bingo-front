@@ -1,4 +1,4 @@
-import {useEffect, useRef, useState} from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 function App() {
@@ -29,12 +29,16 @@ function App() {
 
         const unlockAudio = () => {
             const audio = audioInstanceRef.current;
+            audio.muted = true;
             audio.play().then(() => {
-                audio.pause();
-                audio.currentTime = 0;
+                setTimeout(() => {
+                    audio.pause();
+                    audio.muted = false;
+                    audio.currentTime = 0;
+                }, 100);
                 setAudioUnlocked(true);
-                console.log("Áudio desbloqueado");
-            }).catch(() => {});
+                console.log("Áudio desbloqueado e autorizado");
+            }).catch(err => console.error("Erro ao desbloquear áudio:", err));
             window.removeEventListener('click', unlockAudio);
         };
 
@@ -102,13 +106,9 @@ function App() {
         const hour = now.getHours();
         const minutes = now.getMinutes();
 
-        // Se for antes das 09:00, o próximo é 09:00
         if (hour < 9) return "09:00";
-
-        // Se for 19:00 ou mais, o próximo é 09:00 (amanhã)
         if (hour >= 19) return "09:00";
 
-        // Cálculo do próximo intervalo de 15 min dentro do horário comercial
         const nextInterval = Math.ceil((minutes + 0.1) / 15) * 15;
         let nextHour = hour;
         let nextMin = nextInterval;
@@ -118,7 +118,6 @@ function App() {
             nextMin = 0;
         }
 
-        // Caso o arredondamento tenha passado das 19:00 (ex: era 18:50)
         if (nextHour >= 19 && nextMin > 0) return "09:00";
 
         return `${String(nextHour).padStart(2, '0')}:${String(nextMin).padStart(2, '0')}`;
@@ -187,7 +186,7 @@ function App() {
                             speakNumber(lastNum, prevCount);
                             const resWin = await fetch('/raffle/validate-winners');
                             const winText = await resWin.text();
-                            if (winText) {
+                            if (winText && winText.trim().length > 0) {
                                 const winnersData = JSON.parse(winText);
                                 if (Array.isArray(winnersData) && winnersData.length > 0) {
                                     setCurrentBall(null);
@@ -219,7 +218,10 @@ function App() {
             while (isMounted) {
                 try {
                     const res = await fetch('/winner/today');
-                    if (res.ok) setDailyWinners(await res.json());
+                    if (res.ok) {
+                        const data = await res.json();
+                        setDailyWinners(data);
+                    }
                     const resRaffles = await fetch('/raffle/today');
                     if (resRaffles.ok) {
                         const data = await resRaffles.json();
@@ -235,6 +237,11 @@ function App() {
 
     return (
         <div className="flex h-screen bg-slate-950 text-white overflow-hidden font-sans">
+            {!audioUnlocked && (
+                <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[100] bg-yellow-500/20 text-yellow-500 px-4 py-1 rounded-full text font-black uppercase animate-pulse border border-yellow-500/30">
+                    ⚠️ Clique em qualquer lugar para ativar o som
+                </div>
+            )}
 
             {showStartMessage && (
                 <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[60] bg-yellow-500 text-black px-16 py-12 rounded-[3rem] font-black text-4xl animate-bounce border-[10px] border-white shadow-[0_0_100px_rgba(234,179,8,0.6)]">
@@ -242,7 +249,7 @@ function App() {
                 </div>
             )}
             {currentBall && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-sm">
+                <div className="fixed inset-0 z-50 flex items-center justify-center  backdrop-blur-sm">
                     <div className="text-center animate-bounce">
                         <div className="w-80 h-80 bg-white text-slate-950 rounded-full flex items-center justify-center text-[10rem] font-black border-[12px] border-slate-200 shadow-2xl">
                             {currentBall}
