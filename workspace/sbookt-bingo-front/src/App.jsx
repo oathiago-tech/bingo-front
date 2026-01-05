@@ -11,7 +11,7 @@ function App() {
     const [currentBall, setCurrentBall] = useState(null)
     const [isStarted, setIsStarted] = useState(false)
     const [showStartMessage, setShowStartMessage] = useState(false)
-    const [audioUnlocked, setAudioUnlocked] = useState(true)
+    const [audioUnlocked, setAudioUnlocked] = useState(false)
     const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString())
 
     const numbersRef = useRef([])
@@ -21,11 +21,28 @@ function App() {
         numbersRef.current = numbers
     }, [numbers])
 
+    // Relógio e Desbloqueio de Áudio via Clique
     useEffect(() => {
         const timer = setInterval(() => {
             setCurrentTime(new Date().toLocaleTimeString());
         }, 1000);
-        return () => clearInterval(timer);
+
+        const unlockAudio = () => {
+            const audio = audioInstanceRef.current;
+            audio.play().then(() => {
+                audio.pause();
+                audio.currentTime = 0;
+                setAudioUnlocked(true);
+                console.log("Áudio desbloqueado");
+            }).catch(() => {});
+            window.removeEventListener('click', unlockAudio);
+        };
+
+        window.addEventListener('click', unlockAudio);
+        return () => {
+            clearInterval(timer);
+            window.removeEventListener('click', unlockAudio);
+        };
     }, []);
 
     const speakNumber = (num, currentCount) => {
@@ -73,39 +90,38 @@ function App() {
     };
 
     const playVictoryMusic = () => {
-        if (!audioUnlocked) return;
         const audio = audioInstanceRef.current;
-        audio.volume = 0.5;
+        audio.volume = 0.7;
         audio.loop = false;
         audio.currentTime = 0;
-        audio.play().catch(e => console.error("Erro música:", e));
+        audio.play().catch(e => console.error("Erro música vitória:", e));
     };
 
     const calculateRaffleSchedule = () => {
         const now = new Date();
-        const minutes = now.getMinutes();
-        const nextInterval = Math.ceil((minutes + 0.1) / 15) * 15;
+        const currentInterval = Math.ceil((now.getMinutes() + 0.1) / 15) * 15;
         let nextHour = now.getHours();
-        let nextMin = nextInterval;
-        if (nextInterval === 60) { nextHour += 1; nextMin = 0; }
+        let nextMin = currentInterval;
+        if (currentInterval === 60) { nextHour += 1; nextMin = 0; }
         if (nextHour >= 20) return "09:00";
         return `${String(nextHour).padStart(2, '0')}:${String(nextMin).padStart(2, '0')}`;
+    };
+
+    const getCurrentRaffleTime = () => {
+        const now = new Date();
+        const currentInterval = Math.floor(now.getMinutes() / 15) * 15;
+        return `${String(now.getHours()).padStart(2, '0')}:${String(currentInterval).padStart(2, '0')}`;
     };
 
     useEffect(() => {
         setNextRaffleTime(calculateRaffleSchedule());
         const timer = setInterval(() => setNextRaffleTime(calculateRaffleSchedule()), 30000);
-
         const initialCheck = async () => {
             try {
                 const res = await fetch('/raffle/is-started');
                 const started = await res.json();
-                if (started) { setIsStarted(true); } else {
-                    setIsStarted(false);
-                    setNumbers([]);
-                    setWinners([]);
-                    setCurrentBall(null);
-                }
+                if (started) { setIsStarted(true); }
+                else { setIsStarted(false); setNumbers([]); setWinners([]); setCurrentBall(null); }
             } catch (e) { console.error(e); }
         };
         initialCheck();
@@ -200,14 +216,14 @@ function App() {
         return () => { isMounted = false; };
     }, []);
 
-    const getCurrentRaffleTime = () => {
-        const now = new Date();
-        const currentInterval = Math.floor(now.getMinutes() / 15) * 15;
-        return `${String(now.getHours()).padStart(2, '0')}:${String(currentInterval).padStart(2, '0')}`;
-    };
-
     return (
         <div className="flex h-screen bg-slate-950 text-white overflow-hidden font-sans">
+            {!audioUnlocked && (
+                <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[100] bg-yellow-500/20 text-yellow-500 px-4 py-1 rounded-full text-[10px] font-black uppercase animate-pulse border border-yellow-500/30">
+                    ⚠️ Clique em qualquer lugar para ativar o som
+                </div>
+            )}
+
             {showStartMessage && (
                 <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[60] bg-yellow-500 text-black px-16 py-12 rounded-[3rem] font-black text-4xl animate-bounce border-[10px] border-white shadow-[0_0_100px_rgba(234,179,8,0.6)]">
                     A PRÓXIMA RODADA VAI COMEÇAR!
@@ -223,12 +239,12 @@ function App() {
                 </div>
             )}
 
+            {/* Barra Lateral Esquerda */}
             <div className="w-80 bg-slate-900 border-r border-slate-800 p-6 flex flex-col shrink-0 shadow-5xl">
                 <h2 className="text-xl font-black text-yellow-500 mb-6 uppercase italic tracking-widest border-b border-slate-800 pb-4 text-center animate-pulse">📅 Sorteios de Hoje</h2>
                 <div className="flex-1 space-y-3 overflow-y-auto pr-2 custom-scrollbar">
                     {dailyRaffles.length > 0 ? dailyRaffles.map((r, i) => {
-                        const raffleTime = new Date(r.raffleDate);
-                        const raffleTimeString = raffleTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        const raffleTimeString = new Date(r.raffleDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                         const isActive = isStarted && raffleTimeString === getCurrentRaffleTime();
                         const isPast = (new Date(r.raffleDate) - new Date()) < 0 && !isActive;
                         return (
@@ -244,20 +260,20 @@ function App() {
                 </div>
             </div>
 
+            {/* Área Central */}
             <div className="flex-1 flex flex-col items-center p-6 space-y-6 overflow-y-auto custom-scrollbar">
-                <div className="flex flex-col items-center w-full relative">
-                    <div className="flex items-center justify-center w-full relative">
-                        {/* Título centralizado */}
-                        <h1 className="text-9xl font-black text-yellow-500 italic uppercase tracking-tighter">
-                            <span>RINGO</span>
-                        </h1>
+                <button onClick={() => navigate('/purchase')} className="fixed bottom-6 right-100 z-50 bg-yellow-500 hover:bg-yellow-400 text-black font-black px-6 py-3 rounded-2xl shadow-2xl transition-all active:scale-95 flex items-center gap-2">
+                    <span className="text-xl">🎟️</span> REGISTRAR
+                </button>
 
-                        {/* Relógio posicionado ao lado, mas sem empurrar o título do centro */}
-                        <div className="ml-10 bg-slate-900/80 backdrop-blur-md px-6 py-3 rounded-2xl border border-slate-800 shadow-2xl">
-                            <span className="text-1xl font-black text-yellow-500 font-mono tracking-widest">{currentTime}</span>
+                <div className="flex flex-col items-center w-full">
+                    <div className="flex items-center justify-center gap-10">
+                        <h1 className="text-9xl font-black text-yellow-500 italic uppercase tracking-tighter"><span>RINGO</span></h1>
+                        <div className="bg-slate-900/80 backdrop-blur-md px-6 py-3 rounded-2xl border border-slate-800 shadow-2xl">
+                            <span className="text-5xl font-black text-yellow-500 font-mono tracking-widest">{currentTime}</span>
                         </div>
                     </div>
-                    <p className="text-yellow-500 font-black uppercase tracking-[0.3em] text-xl italic mt-[-10px] animate-bounce-rotate text-center">Seu dia de sorte</p>
+                    <p className="text-yellow-500 font-black uppercase tracking-[0.3em] text-xl italic mt-[-10px] animate-bounce-rotate">Seu dia de sorte</p>
                 </div>
 
                 <div className="bg-slate-900 p-4 rounded-3xl border border-slate-800 shadow-xl text-center w-full max-w-md">
@@ -288,6 +304,7 @@ function App() {
                 </div>
             </div>
 
+            {/* Barra Lateral Direita */}
             <div className="w-96 bg-slate-900 border-l border-slate-800 p-8 flex flex-col shrink-0 shadow-2xl">
                 <h2 className="text-2xl font-black text-yellow-500 mb-8 uppercase italic tracking-widest border-b border-slate-800 pb-4 text-center animate-pulse">🏆 Prêmios do Dia</h2>
                 <div className="flex-1 space-y-4 overflow-y-auto pr-2 custom-scrollbar">
