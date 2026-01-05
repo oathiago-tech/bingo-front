@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { playBeep, speakNumber, speakStartMessage, calculateRaffleSchedule, getCurrentRaffleTime } from './bingoUtils'
 
 function App() {
     const navigate = useNavigate();
@@ -20,6 +21,26 @@ function App() {
     useEffect(() => {
         numbersRef.current = numbers
     }, [numbers])
+
+    const unlockAudioAction = () => {
+        // Desbloqueia Música
+        const audio = audioInstanceRef.current;
+        audio.play().then(() => {
+            audio.pause();
+            audio.currentTime = 0;
+        }).catch(() => {});
+
+        // Desbloqueia Narração (Estratégia iOS)
+        if ('speechSynthesis' in window) {
+            const synth = window.speechSynthesis;
+            const ut = new SpeechSynthesisUtterance(" "); // Espaço para "acordar" o motor
+            ut.volume = 0;
+            synth.speak(ut);
+        }
+
+        setAudioUnlocked(true);
+        console.log("Áudio e Voz Desbloqueados via clique");
+    };
 
     // Relógio e Desbloqueio de Áudio via Clique
     useEffect(() => {
@@ -48,50 +69,6 @@ function App() {
             window.removeEventListener('click', unlockAudio);
         };
     }, []);
-
-    const speakNumber = (num, currentCount) => {
-        if (!('speechSynthesis' in window)) return;
-        const synth = window.speechSynthesis;
-        synth.cancel();
-
-        const createUtterance = (text) => {
-            const utterance = new SpeechSynthesisUtterance(text);
-            const voices = synth.getVoices();
-            const selectedVoice = voices.find(v => v.name.includes('Antonio'))
-                || voices.find(v => v.name.includes('Google') && v.lang.includes('pt-BR'))
-                || voices.find(v => v.lang.includes('pt-BR'));
-
-            if (selectedVoice) utterance.voice = selectedVoice;
-            utterance.lang = 'pt-BR';
-            utterance.rate = 0.70;
-            return utterance;
-        };
-
-        const prefix = currentCount === 0 ? "Primeiro Número" : "Próximo Número";
-        const firstPart = createUtterance(`${prefix}.  .  .  .  . ${num}`);
-
-        firstPart.onend = () => {
-            setTimeout(() => {
-                let secondText = (num >= 10)
-                    ? `${num.toString()[0]} . . . ${num.toString()[1]}`
-                    : `${num}`;
-                synth.speak(createUtterance(secondText));
-            }, 1000);
-        };
-        synth.speak(firstPart);
-    };
-
-    const speakStartMessage = () => {
-        if (!('speechSynthesis' in window)) return;
-        const synth = window.speechSynthesis;
-        const utterance = new SpeechSynthesisUtterance("A Próxima rodada vai começar");
-        const voices = synth.getVoices();
-        const selectedVoice = voices.find(v => v.name.includes('Antonio')) || voices.find(v => v.lang.includes('pt-BR'));
-        if (selectedVoice) utterance.voice = selectedVoice;
-        utterance.lang = 'pt-BR';
-        utterance.rate = 0.9;
-        synth.speak(utterance);
-    };
 
     const playVictoryMusic = () => {
         const audio = audioInstanceRef.current;
@@ -162,6 +139,25 @@ function App() {
         checkStatus();
         return () => clearInterval(statusTimer);
     }, [isStarted]);
+
+    const playBeep = () => {
+        try {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // Nota Lá (A5)
+            gainNode.gain.setValueAtTime(10, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 0.5);
+        } catch (e) { console.error("Erro ao emitir bip:", e); }
+    };
 
     useEffect(() => {
         if (!isStarted) return;
@@ -238,8 +234,13 @@ function App() {
     return (
         <div className="flex h-screen bg-slate-950 text-white overflow-hidden font-sans">
             {!audioUnlocked && (
-                <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[100] bg-yellow-500/20 text-yellow-500 px-4 py-1 rounded-full text font-black uppercase animate-pulse border border-yellow-500/30">
-                    ⚠️ Clique em qualquer lugar para ativar o som
+                <div className="fixed inset-0 z-[200] bg-black/95 backdrop-blur-xl flex items-center justify-center p-6 text-center">
+                    <button
+                        onClick={unlockAudioAction}
+                        className="bg-yellow-500 text-black px-12 py-6 rounded-full font-black text-2xl animate-pulse shadow-[0_0_50px_rgba(234,179,8,0.4)] border-4 border-white"
+                    >
+                        🔊 ATIVAR SOM
+                    </button>
                 </div>
             )}
 
@@ -249,11 +250,9 @@ function App() {
                 </div>
             )}
             {currentBall && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center  backdrop-blur-sm">
-                    <div className="text-center animate-bounce">
-                        <div className="w-80 h-80 bg-white text-slate-950 rounded-full flex items-center justify-center text-[10rem] font-black border-[12px] border-slate-200 shadow-2xl">
-                            {currentBall}
-                        </div>
+                <div className="fixed inset-0 z-[100] flex items-center justify-center  backdrop-blur-sm">
+                    <div className="w-64 h-64 bg-white rounded-full flex items-center justify-center text-9xl font-black text-slate-950 border-[12px] border-yellow-500 animate-bounce shadow-2xl">
+                        {currentBall}
                     </div>
                 </div>
             )}
