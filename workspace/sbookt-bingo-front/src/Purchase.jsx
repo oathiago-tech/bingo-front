@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 // Funções Utilitárias
@@ -29,13 +29,27 @@ export default function Purchase() {
     const navigate = useNavigate();
     const [sheets, setSheets] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [selectedSheet, setSelectedSheet] = useState(null); // Novo estado para visualização
+    const [pendingRaffles, setPendingRaffles] = useState([]);
+    const [selectedRaffle, setSelectedRaffle] = useState(null);
+    const [selectedSheet, setSelectedSheet] = useState(null);
     const [formData, setFormData] = useState({
         storeId: '',
-        raffleDay: '',
-        raffleHour: '09:00',
         amount: 1
     });
+
+    useEffect(() => {
+        const loadPending = async () => {
+            try {
+                const res = await fetch('/raffle/pending');
+                const data = await res.json();
+                // Ordenar por data para facilitar a escolha
+                setPendingRaffles(data.sort((a, b) => a.raffleDate.localeCompare(b.raffleDate)));
+            } catch (err) {
+                console.error("Erro ao carregar sorteios pendentes", err);
+            }
+        };
+        loadPending();
+    }, []);
 
     const printAllSheets = () => {
         if (sheets.length === 0) return;
@@ -84,16 +98,23 @@ export default function Purchase() {
 
     const handleCreateSheets = async (e) => {
         e.preventDefault();
-        if (!formData.raffleDay) {
-            alert("Por favor, selecione um dia.");
+        if (!selectedRaffle) {
+            alert("Por favor, selecione um sorteio disponível.");
             return;
         }
         setLoading(true);
         try {
+            const dateObj = new Date(selectedRaffle.raffleDate);
+            const payload = {
+                ...formData,
+                raffleDay: selectedRaffle.raffleDate.split('T')[0],
+                raffleHour: dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            };
+
             const res = await fetch('/sheet', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify([formData])
+                body: JSON.stringify([payload])
             });
             const data = await res.json();
             setSheets(data);
@@ -151,67 +172,58 @@ export default function Purchase() {
                 <div className="bg-slate-900 p-8 rounded-[2rem] border border-slate-800 shadow-xl self-start">
                     <h2 className="text-4xl font-black text-yellow-500 mb-8 uppercase italic tracking-tighter">Gerar Cartelas</h2>
                     <form onSubmit={handleCreateSheets} className="space-y-6">
-                        <div>
-                            <label className="block text-xs font-black uppercase text-slate-500 mb-2">ID da Loja</label>
-                            <input required type="number" className="w-full bg-slate-800 border border-slate-700 p-5 rounded-2xl outline-none focus:border-yellow-500 text-xl font-bold"
-                                   value={formData.storeId} onChange={e => setFormData({...formData, storeId: parseInt(e.target.value) || ''})} />
-                        </div>
-
-                        <div>
-                            <label className="block text-xs font-black uppercase text-slate-500 mb-4">Selecione o Dia (Segunda a Sexta)</label>
-                            <div className="grid grid-cols-5 gap-2">
-                                {getNextWorkDays().map((date, idx) => {
-                                    const dateStr = date.toISOString().split('T')[0];
-                                    const isSelected = formData.raffleDay === dateStr;
-                                    const dayName = date.toLocaleDateString('pt-BR', { weekday: 'short' });
-                                    const dayNum = date.getDate();
-                                    const monthName = date.toLocaleDateString('pt-BR', { month: 'short' });
-
-                                    return (
-                                        <button
-                                            key={idx}
-                                            type="button"
-                                            onClick={() => setFormData({ ...formData, raffleDay: dateStr })}
-                                            className={`flex flex-col items-center p-3 rounded-xl border-2 transition-all
-                                                ${isSelected
-                                                ? 'bg-yellow-500 border-white text-black scale-105 shadow-lg'
-                                                : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500'}`}
-                                        >
-                                            <span className="text-[10px] uppercase font-black">{dayName}</span>
-                                            <span className="text-xl font-black">{dayNum}</span>
-                                            <span className="text-[10px] uppercase">{monthName}</span>
-                                        </button>
-                                    );
-                                })}
+                            <div>
+                                <label className="block text-xs font-black uppercase text-slate-500 mb-2">ID da Loja</label>
+                                <input required type="number" className="w-full bg-slate-800 border border-slate-700 p-5 rounded-2xl outline-none focus:border-yellow-500 text-xl font-bold"
+                                       value={formData.storeId} onChange={e => setFormData({...formData, storeId: parseInt(e.target.value) || ''})} />
                             </div>
-                        </div>
 
-                        <div className="grid grid-cols-2 gap-6">
-                            <div className="col-span-2 md:col-span-1">
-                                <label className="block text-xs font-black uppercase text-slate-500 mb-2">Hora do Sorteio</label>
-                                <select
-                                    required
-                                    className="w-full bg-slate-800 border border-slate-700 p-5 rounded-2xl outline-none focus:border-yellow-500 font-bold appearance-none cursor-pointer text-xl"
-                                    value={formData.raffleHour}
-                                    onChange={e => setFormData({...formData, raffleHour: e.target.value})}
-                                >
-                                    {generateTimeOptions().map(time => (
-                                        <option key={time} value={time}>{time}</option>
-                                    ))}
-                                </select>
+                            <div>
+                                <label className="block text-xs font-black uppercase text-slate-500 mb-4">Selecione o Sorteio Disponível</label>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
+                                    {pendingRaffles.map((raffle, idx) => {
+                                        const date = new Date(raffle.raffleDate);
+                                        const isSelected = selectedRaffle?.raffleDate === raffle.raffleDate;
+                                        
+                                        return (
+                                            <button
+                                                key={idx}
+                                                type="button"
+                                                onClick={() => setSelectedRaffle(raffle)}
+                                                className={`flex flex-col items-center p-4 rounded-2xl border-2 transition-all
+                                                    ${isSelected
+                                                    ? 'bg-yellow-500 border-white text-black scale-105 shadow-lg'
+                                                    : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500'}`}
+                                            >
+                                                <span className="text-[10px] uppercase font-black">
+                                                    {date.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' })}
+                                                </span>
+                                                <span className="text-xl font-black">
+                                                    {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                </span>
+                                                <span className="text-[10px] font-bold text-green-500 bg-black/20 px-2 rounded-full mt-1">
+                                                    R$ {raffle.value.toFixed(2)}
+                                                </span>
+                                            </button>
+                                        );
+                                    })}
+                                    {pendingRaffles.length === 0 && (
+                                        <p className="col-span-full text-center text-slate-600 py-4 italic">Nenhum sorteio pendente encontrado.</p>
+                                    )}
+                                </div>
                             </div>
-                            <div className="col-span-2 md:col-span-1">
-                                <label className="block text-xs font-black uppercase text-slate-500 mb-2">Quantidade</label>
+
+                            <div className="">
+                                <label className="block text-xs font-black uppercase text-slate-500 mb-2">Quantidade de Cartelas</label>
                                 <input required type="number" min="1" className="w-full bg-slate-800 border border-slate-700 p-5 rounded-2xl outline-none focus:border-yellow-500 text-xl font-bold"
                                        value={formData.amount} onChange={e => setFormData({...formData, amount: parseInt(e.target.value) || 1})} />
                             </div>
-                        </div>
 
-                        <button type="submit" disabled={loading} className="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-black py-6 rounded-2xl uppercase text-2xl shadow-lg transition-all disabled:opacity-50">
-                            {loading ? 'Processando...' : 'Confirmar Registro'}
-                        </button>
-                    </form>
-                </div>
+                            <button type="submit" disabled={loading || !selectedRaffle} className="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-black py-6 rounded-2xl uppercase text-2xl shadow-lg transition-all disabled:opacity-50">
+                                {loading ? 'Processando...' : 'Confirmar Registro'}
+                            </button>
+                        </form>
+                    </div>
 
                 {/* Lado Direito: Listagem */}
                 <div className="bg-slate-900/40 rounded-[2rem] border border-slate-800/50 p-6 flex flex-col h-[700px]">
