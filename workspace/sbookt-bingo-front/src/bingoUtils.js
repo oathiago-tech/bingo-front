@@ -1,20 +1,34 @@
 export const playBeep = () => {
     try {
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) return;
+        
+        const audioCtx = new AudioContextClass();
+        
+        // No iOS/Safari, o context pode começar em state 'suspended'
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+
         const oscillator = audioCtx.createOscillator();
         const gainNode = audioCtx.createGain();
 
         oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
-        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+        oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // Nota Lá (A5)
+        
+        // Volume inicial mais audível
+        gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        // Decaimento suave
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
 
         oscillator.connect(gainNode);
         gainNode.connect(audioCtx.destination);
 
         oscillator.start();
-        oscillator.stop(audioCtx.currentTime + 0.5);
-    } catch (e) { console.error("Erro ao emitir bip:", e); }
+        oscillator.stop(audioCtx.currentTime + 0.3);
+    } catch (e) { 
+        console.error("Erro ao emitir bip:", e); 
+    }
 };
 
 export const speakNumber = (num, currentCount) => {

@@ -37,7 +37,7 @@ function App() {
             ut.volume = 0;
             synth.speak(ut);
         }
-
+        playBeep();
         setAudioUnlocked(true);
         console.log("Áudio e Voz Desbloqueados via clique");
     };
@@ -139,25 +139,6 @@ function App() {
         checkStatus();
         return () => clearInterval(statusTimer);
     }, [isStarted]);
-
-    const playBeep = () => {
-        try {
-            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            const oscillator = audioCtx.createOscillator();
-            const gainNode = audioCtx.createGain();
-
-            oscillator.type = 'sine';
-            oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // Nota Lá (A5)
-            gainNode.gain.setValueAtTime(10, audioCtx.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
-
-            oscillator.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
-
-            oscillator.start();
-            oscillator.stop(audioCtx.currentTime + 0.5);
-        } catch (e) { console.error("Erro ao emitir bip:", e); }
-    };
 
     useEffect(() => {
         if (!isStarted) return;
@@ -274,7 +255,7 @@ function App() {
                                 <span className={`font-black text-lg ${isActive ? 'text-black' : 'text-green-500'}`}>R$ {r.value.toFixed(2)}</span>
                             </div>
                         );
-                    }) : <p className="opacity-20 text-center mt-10 font-black uppercase tracking-widest text-xs">Carregando...</p>}
+                    }) : <p className="opacity-20 text-center mt-10 font-black uppercase tracking-widest text-xs">Não existem jogos para hoje.</p>}
                 </div>
             </div>
 
