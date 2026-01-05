@@ -29,6 +29,7 @@ export default function Purchase() {
     const navigate = useNavigate();
     const [sheets, setSheets] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [selectedSheet, setSelectedSheet] = useState(null); // Novo estado para visualização
     const [formData, setFormData] = useState({
         storeId: '',
         raffleDay: '',
@@ -57,6 +58,7 @@ export default function Purchase() {
                     .print-item { 
                         page-break-after: always; 
                         width: 100%; 
+                        height: 100%;
                         display: flex; 
                         justify-content: center; 
                     }
@@ -101,6 +103,34 @@ export default function Purchase() {
 
     return (
         <div className="min-h-screen bg-slate-950 p-10 text-white font-sans">
+            {/* Modal de Visualização da Cartela */}
+            {selectedSheet && (
+                <div
+                    className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-10"
+                    onClick={() => setSelectedSheet(null)}
+                >
+                    <div
+                        className="relative max-w-lg bg-white p-4 rounded-2xl shadow-2xl animate-in fade-in zoom-in duration-300"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <button
+                            onClick={() => setSelectedSheet(null)}
+                            className="absolute -top-12 right-0 text-white text-4xl font-black hover:text-yellow-500 transition-colors"
+                        >
+                            &times;
+                        </button>
+                        <img
+                            src={`data:image/png;base64,${selectedSheet.base64Image}`}
+                            alt="Cartela"
+                            className="w-full h-auto rounded-lg shadow-inner"
+                        />
+                        <p className="text-black text-center mt-4 font-black uppercase tracking-widest text-sm italic">
+                            Pré-visualização
+                        </p>
+                    </div>
+                </div>
+            )}
+
             <div className="flex justify-between items-center mb-8">
                 <button onClick={() => navigate('/')} className="bg-slate-800 hover:bg-slate-700 px-6 py-2 rounded-xl font-bold transition-all flex items-center gap-2">
                     ← Voltar para o Bingo
@@ -185,17 +215,26 @@ export default function Purchase() {
 
                 {/* Lado Direito: Listagem */}
                 <div className="bg-slate-900/40 rounded-[2rem] border border-slate-800/50 p-6 flex flex-col h-[700px]">
-                    <h3 className="text-xl font-black text-slate-500 mb-6 uppercase tracking-widest text-center border-b border-slate-800 pb-4">Lote Atual</h3>
+                    <h3 className="text-xl font-black text-slate-500 mb-6 uppercase tracking-widest text-center border-b border-slate-800 pb-4">Cartelas Geradas</h3>
                     <div className="flex-1 space-y-4 overflow-y-auto pr-2 custom-scrollbar">
                         {sheets.length > 0 ? sheets.map((s, i) => (
                             <div key={i} className="bg-slate-900 border border-slate-700 p-6 rounded-3xl flex justify-between items-center hover:border-yellow-500/50 transition-colors group">
-                                <div>
+                                <div className="cursor-pointer flex-1" onClick={() => setSelectedSheet(s)}>
                                     <p className="font-black text-2xl text-white group-hover:text-yellow-500 transition-colors">{s.storeName}</p>
                                     <p className="text-sm text-slate-500 font-mono mt-1">
                                         📅 {new Date(s.raffleDate).toLocaleDateString()} | ⏰ {new Date(s.raffleDate).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
                                     </p>
                                 </div>
-                                <div className="text-slate-500 font-bold italic text-sm">Registrada ✓</div>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setSelectedSheet(s)}
+                                        className="bg-slate-800 hover:bg-slate-700 text-white p-3 rounded-xl transition-all border border-slate-600"
+                                        title="Visualizar"
+                                    >
+                                        👁️
+                                    </button>
+                                    <div className="text-slate-500 font-bold italic text-xs uppercase hidden md:flex items-center ml-2">Registrada ✓</div>
+                                </div>
                             </div>
                         )) : (
                             <div className="flex flex-col items-center justify-center h-full opacity-20">
