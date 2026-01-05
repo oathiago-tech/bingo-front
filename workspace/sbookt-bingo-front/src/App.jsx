@@ -99,11 +99,28 @@ function App() {
 
     const calculateRaffleSchedule = () => {
         const now = new Date();
-        const currentInterval = Math.ceil((now.getMinutes() + 0.1) / 15) * 15;
-        let nextHour = now.getHours();
-        let nextMin = currentInterval;
-        if (currentInterval === 60) { nextHour += 1; nextMin = 0; }
-        if (nextHour >= 20) return "09:00";
+        const hour = now.getHours();
+        const minutes = now.getMinutes();
+
+        // Se for antes das 09:00, o próximo é 09:00
+        if (hour < 9) return "09:00";
+
+        // Se for 19:00 ou mais, o próximo é 09:00 (amanhã)
+        if (hour >= 19) return "09:00";
+
+        // Cálculo do próximo intervalo de 15 min dentro do horário comercial
+        const nextInterval = Math.ceil((minutes + 0.1) / 15) * 15;
+        let nextHour = hour;
+        let nextMin = nextInterval;
+
+        if (nextInterval === 60) {
+            nextHour += 1;
+            nextMin = 0;
+        }
+
+        // Caso o arredondamento tenha passado das 19:00 (ex: era 18:50)
+        if (nextHour >= 19 && nextMin > 0) return "09:00";
+
         return `${String(nextHour).padStart(2, '0')}:${String(nextMin).padStart(2, '0')}`;
     };
 
@@ -219,7 +236,7 @@ function App() {
     return (
         <div className="flex h-screen bg-slate-950 text-white overflow-hidden font-sans">
             {!audioUnlocked && (
-                <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[100] bg-yellow-500/20 text-yellow-500 px-4 py-1 rounded-full text-[10px] font-black uppercase animate-pulse border border-yellow-500/30">
+                <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[100] bg-yellow-500/20 text-yellow-500 px-4 py-1 rounded-full text font-black uppercase animate-pulse border border-yellow-500/30">
                     ⚠️ Clique em qualquer lugar para ativar o som
                 </div>
             )}
@@ -262,15 +279,11 @@ function App() {
 
             {/* Área Central */}
             <div className="flex-1 flex flex-col items-center p-6 space-y-6 overflow-y-auto custom-scrollbar">
-                <button onClick={() => navigate('/purchase')} className="fixed bottom-6 right-100 z-50 bg-yellow-500 hover:bg-yellow-400 text-black font-black px-6 py-3 rounded-2xl shadow-2xl transition-all active:scale-95 flex items-center gap-2">
-                    <span className="text-xl">🎟️</span> REGISTRAR
-                </button>
-
                 <div className="flex flex-col items-center w-full">
                     <div className="flex items-center justify-center gap-10">
                         <h1 className="text-9xl font-black text-yellow-500 italic uppercase tracking-tighter"><span>RINGO</span></h1>
                         <div className="bg-slate-900/80 backdrop-blur-md px-6 py-3 rounded-2xl border border-slate-800 shadow-2xl">
-                            <span className="text-5xl font-black text-yellow-500 font-mono tracking-widest">{currentTime}</span>
+                            <span className="text-2xl font-black text-yellow-500 font-mono tracking-widest">{currentTime}</span>
                         </div>
                     </div>
                     <p className="text-yellow-500 font-black uppercase tracking-[0.3em] text-xl italic mt-[-10px] animate-bounce-rotate">Seu dia de sorte</p>
@@ -293,7 +306,7 @@ function App() {
 
                 <div className="grid grid-cols-10 gap-3 p-8 bg-slate-900/50 rounded-[3rem] border border-slate-800 shadow-2xl">
                     {Array.from({length: 75}, (_, i) => i + 1).map(n => (
-                        <div key={n} className={`w-16 h-16 flex items-center justify-center rounded-full border-2 font-black text-2xl transition-all duration-500 ${numbers.includes(n) ? 'bg-white border-white text-slate-950 scale-110 shadow-[0_0_20px_rgba(255,255,255,0.6)] animate-pulse' : 'bg-slate-800/40 border-slate-700 text-slate-600'}`}>
+                        <div key={n} className={`w-16 h-16 flex items-center justify-center rounded-full border-2 font-black text-1xl transition-all duration-500 ${numbers.includes(n) ? 'bg-white border-white text-slate-950 scale-110 shadow-[0_0_20px_rgba(255,255,255,0.6)] animate-pulse' : 'bg-slate-800/40 border-slate-700 text-slate-600'}`}>
                             {n}
                         </div>
                     ))}
