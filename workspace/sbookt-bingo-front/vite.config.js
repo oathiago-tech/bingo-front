@@ -4,24 +4,10 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
     plugins: [react()],
     server: {
+        host: '0.0.0.0',
         proxy: {
-            '/raffle': {
-                target: 'http://127.0.0.1:8080',
-                changeOrigin: true,
-                secure: false,
-            },
-            '/winner': {
-                target: 'http://127.0.0.1:8080',
-                changeOrigin: true,
-                secure: false,
-            },
-            '/sheet': {
-                target: 'http://127.0.0.1:8080',
-                changeOrigin: true,
-                secure: false,
-            },
-            '/store': {
-                target: 'http://127.0.0.1:8080',
+            '/': {
+                target: 'http://35.174.62.19:8080',
                 changeOrigin: true,
                 secure: false,
             },

@@ -1,3 +1,4 @@
+
 import {useEffect, useRef, useState} from 'react'
 import {
     playBeep,
@@ -5,9 +6,8 @@ import {
     speakStartMessage,
     calculateRaffleSchedule,
     getCurrentRaffleTime,
-    fetchStatus,
-    fetchDailyData
-} from './RingoUtils.js'
+} from './RingoUtils.js';
+import axios from 'axios';
 
 function App() {
     const [numbers, setNumbers] = useState([])
@@ -27,6 +27,38 @@ function App() {
     useEffect(() => {
         numbersRef.current = numbers
     }, [numbers])
+
+    const fetchStatus = async () => {
+        try {
+            const res = await axios.get('https://meuringo.com.br/raffle/is-started');
+            return res.data;
+        } catch (e) {
+            return false;
+        }
+    };
+
+    const fetchDailyData = async () => {
+        try {
+            const [resWinners, resRaffles] = await Promise.all([
+                axios.get('https://meuringo.com.br/winner/today'),
+                axios.get('https://meuringo.com.br/raffle/today')
+            ]);
+
+            const winners = resWinners.data || [];
+            const raffles = resRaffles.data || [];
+
+            return {
+                winners,
+                raffles: raffles.sort((a, b) => {
+                    if (!a.raffleDate || !b.raffleDate) return 0;
+                    return a.raffleDate.localeCompare(b.raffleDate);
+                })
+            };
+        } catch (e) {
+            console.error("Erro ao buscar dados diários:", e);
+            return { winners: [], raffles: [] };
+        }
+    };
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date().toLocaleTimeString()), 1000);
@@ -91,8 +123,8 @@ function App() {
         const raffleLoop = async () => {
             while (isMounted && isStarted) {
                 try {
-                    const res = await fetch('/ringo/raffle');
-                    const data = await res.json();
+                    const res = await axios.get('https://meuringo.com.br/raffle');
+                    const data = res.data;
                     if (res.status === 500 || data?.code === 500) {
                         setIsStarted(false);
                         break;
@@ -104,21 +136,18 @@ function App() {
                             setNumbers(data.map(Number));
                             setCurrentBall(last);
                             speakNumber(last, prevCount);
-                            const resWin = await fetch('/ringo/raffle/validate-winners');
-                            const winText = await resWin.text();
-                            if (winText?.trim()) {
-                                const winData = JSON.parse(winText);
-                                if (winData.length > 0) {
-                                    setCurrentBall(null);
-                                    setWinners(winData);
-                                    audioInstanceRef.current.play();
-                                    await new Promise(r => setTimeout(r, 30000));
-                                    audioInstanceRef.current.pause();
-                                    setWinners([]);
-                                    setNumbers([]);
-                                    setIsStarted(false);
-                                    break;
-                                }
+                            const resWin = await axios.get('https://meuringo.com.br/raffle/validate-winners');
+                            const winData = resWin.data;
+                            if (winData && Array.isArray(winData) && winData.length > 0) {
+                                setCurrentBall(null);
+                                setWinners(winData);
+                                audioInstanceRef.current.play();
+                                await new Promise(r => setTimeout(r, 30000));
+                                audioInstanceRef.current.pause();
+                                setWinners([]);
+                                setNumbers([]);
+                                setIsStarted(false);
+                                break;
                             }
                             await new Promise(r => setTimeout(r, 4000));
                             setCurrentBall(null);

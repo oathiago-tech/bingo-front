@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from "axios";
 
 export default function RaffleAdmin() {
     const navigate = useNavigate();
@@ -13,10 +14,10 @@ export default function RaffleAdmin() {
 
     const loadPending = async () => {
         try {
-            const res = await fetch('/ringo/raffle/pending');
-            if (res.ok) {
-                const data = await res.json();
-                setPendingRaffles(data.sort((a, b) => a.raffleDate.localeCompare(b.raffleDate)));
+            const res = await axios.get('https://meuringo.com.br/raffle/pending');
+            // Axios retorna os dados diretamente em res.data
+            if (res.data && Array.isArray(res.data)) {
+                setPendingRaffles(res.data.sort((a, b) => a.raffleDate.localeCompare(b.raffleDate)));
             }
         } catch (err) {
             console.error("Erro ao carregar sorteios:", err);
@@ -33,22 +34,23 @@ export default function RaffleAdmin() {
         e.preventDefault();
         setLoading(true);
         try {
-            const res = await fetch('/ringo/raffle', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    raffleDate: formData.raffleDate,
-                    value: parseFloat(formData.value)
-                })
+            // Alterado para /raffle/save para evitar o 404 do root /raffle
+            const res = await axios.post('https://meuringo.com.br/raffle/save', {
+                raffleDate: formData.raffleDate,
+                value: parseFloat(formData.value)
+            }, {
+                headers: { 'Content-Type': 'application/json' }
             });
-            if (res.ok) {
+
+            if (res.status === 200 || res.status === 201) {
                 setFormData({ raffleDate: '', value: '' });
                 await loadPending();
                 setShowSuccess(true);
                 setTimeout(() => setShowSuccess(false), 4000);
             }
         } catch (err) {
-            console.error(err);
+            console.error("Erro ao criar sorteio:", err);
+            alert("Erro ao cadastrar: Verifique se o endpoint /raffle/save está correto no backend.");
         } finally {
             setLoading(false);
         }
@@ -57,19 +59,20 @@ export default function RaffleAdmin() {
     const handleStartRaffle = (raffle) => {
         const raffleId = raffle.id;
 
-        if (raffleId === undefined || raffleId === null) {
-            alert("ERRO: O Backend não enviou o ID deste sorteio no endpoint /raffle/pending. Impossível iniciar.");
-            console.error("Dados do sorteio sem ID:", raffle);
+        if (!raffleId) {
+            alert("ERRO: O Backend não enviou o ID deste sorteio. Impossível iniciar.");
             return;
         }
 
-        // "Fire and forget" - Chama e não espera resposta
-        fetch(`/raffle/start?id=${raffleId}`, { method: 'POST' })
-            .catch(err => console.error("Erro ao iniciar:", err));
+        axios.post(`https://meuringo.com.br/raffle/start?id=${raffleId}`)
+            .then(res => {
+                if (res.status === 200) {
+                    console.log("Sorteio iniciado com sucesso!");
+                }
+            })
+            .catch(err => console.error("Erro ao iniciar sorteio:", err));
 
-        // Remove da lista local imediatamente para feedback instantâneo
-        setPendingRaffles(prev => prev.filter(r => (r.id || r.raffleDate) !== (raffle.id || raffle.raffleDate)));
-
+        setPendingRaffles(prev => prev.filter(r => r.id !== raffleId));
         setShowSuccess(true);
         setTimeout(() => setShowSuccess(false), 3000);
     };

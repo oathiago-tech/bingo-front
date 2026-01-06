@@ -1,10 +1,13 @@
+import axios from 'axios';
+
+// --- Áudio ---
 export const playBeep = () => {
     try {
         const AudioContextClass = window.AudioContext || window.webkitAudioContext;
         if (!AudioContextClass) return;
-        
+
         const audioCtx = new AudioContextClass();
-        
+
         // No iOS/Safari, o context pode começar em state 'suspended'
         if (audioCtx.state === 'suspended') {
             audioCtx.resume();
@@ -15,7 +18,7 @@ export const playBeep = () => {
 
         oscillator.type = 'sine';
         oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // Nota Lá (A5)
-        
+
         // Volume inicial mais audível
         gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
         // Decaimento suave
@@ -26,8 +29,8 @@ export const playBeep = () => {
 
         oscillator.start();
         oscillator.stop(audioCtx.currentTime + 0.3);
-    } catch (e) { 
-        console.error("Erro ao emitir bip:", e); 
+    } catch (e) {
+        console.error("Erro ao emitir bip:", e);
     }
 };
 
@@ -75,7 +78,7 @@ export const speakStartMessage = () => {
     synth.speak(utterance);
 };
 
-// --- Lógica de Horários ---
+// --- Lógica de horários ---
 export const calculateRaffleSchedule = () => {
     const now = new Date();
     const hour = now.getHours();
@@ -93,24 +96,4 @@ export const getCurrentRaffleTime = () => {
     const now = new Date();
     const currentInterval = Math.floor(now.getMinutes() / 15) * 15;
     return `${String(now.getHours()).padStart(2, '0')}:${String(currentInterval).padStart(2, '0')}`;
-};
-
-// --- Requisições API ---
-export const fetchStatus = async () => {
-    try {
-        const res = await fetch('/ringo/raffle/is-started');
-        return await res.json();
-    } catch (e) { return false; }
-};
-
-export const fetchDailyData = async () => {
-    try {
-        const [resWinners, resRaffles] = await Promise.all([
-            fetch('/winner/today'),
-            fetch('/raffle/today')
-        ]);
-        const winners = resWinners.ok ? await resWinners.json() : [];
-        const raffles = resRaffles.ok ? await resRaffles.json() : [];
-        return { winners, raffles: raffles.sort((a, b) => a.raffleDate.localeCompare(b.raffleDate)) };
-    } catch (e) { return { winners: [], raffles: [] }; }
 };
