@@ -19,7 +19,7 @@ export default function Purchase() {
     useEffect(() => {
         const loadPending = async () => {
             try {
-                const res = await fetch('/raffle/pending');
+                const res = await fetch('/ringo/raffle/pending');
                 const data = await res.json();
                 setPendingRaffles(data.sort((a, b) => a.raffleDate.localeCompare(b.raffleDate)));
             } catch (err) { console.error(err); }
@@ -35,7 +35,7 @@ export default function Purchase() {
         }
         const timer = setTimeout(async () => {
             try {
-                const res = await fetch(`/store/search?name=${encodeURIComponent(storeSearch)}`);
+                const res = await fetch(`/ringo/store/search?name=${encodeURIComponent(storeSearch)}`);
                 if (res.ok) {
                     const data = await res.json();
                     setStores(data);

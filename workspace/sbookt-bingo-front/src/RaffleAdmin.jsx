@@ -13,7 +13,7 @@ export default function RaffleAdmin() {
 
     const loadPending = async () => {
         try {
-            const res = await fetch('/raffle/pending');
+            const res = await fetch('/ringo/raffle/pending');
             if (res.ok) {
                 const data = await res.json();
                 setPendingRaffles(data.sort((a, b) => a.raffleDate.localeCompare(b.raffleDate)));
@@ -33,7 +33,7 @@ export default function RaffleAdmin() {
         e.preventDefault();
         setLoading(true);
         try {
-            const res = await fetch('/raffle', {
+            const res = await fetch('/ringo/raffle', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

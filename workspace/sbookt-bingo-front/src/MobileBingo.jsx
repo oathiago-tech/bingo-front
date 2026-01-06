@@ -86,7 +86,7 @@ function MobileBingo() {
         const loop = async () => {
             while (isMounted && isStarted) {
                 try {
-                    const res = await fetch('/raffle');
+                    const res = await fetch('/ringo/raffle');
                     const data = await res.json();
                     if (res.status === 500 || data?.code === 500) {
                         setIsStarted(false);
@@ -99,7 +99,7 @@ function MobileBingo() {
                             setNumbers(data.map(Number));
                             setCurrentBall(last);
                             speakNumber(last, prevCount);
-                            const resWin = await fetch('/raffle/validate-winners');
+                            const resWin = await fetch('/ringo/raffle/validate-winners');
                             const winText = await resWin.text();
                             if (winText?.trim()) {
                                 const winData = JSON.parse(winText);

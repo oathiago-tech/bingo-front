@@ -98,7 +98,7 @@ export const getCurrentRaffleTime = () => {
 // --- Requisições API ---
 export const fetchStatus = async () => {
     try {
-        const res = await fetch('/raffle/is-started');
+        const res = await fetch('/ringo/raffle/is-started');
         return await res.json();
     } catch (e) { return false; }
 };
