@@ -1,16 +1,31 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+// https://vite.dev/config/
 export default defineConfig({
-    plugins: [react()],
-    server: {
-        host: '0.0.0.0',
-        proxy: {
-            '/': {
-                target: 'http://35.174.62.19:8080',
-                changeOrigin: true,
-                secure: false,
-            },
-        },
-    },
+  plugins: [react()],
+  server: {
+    proxy: {
+      '/raffle': {
+        target: 'https://meuringo.com.br',
+        changeOrigin: true,
+      },
+      '/winner': {
+        target: 'https://meuringo.com.br',
+        changeOrigin: true,
+      },
+      '/ringo': {
+        target: 'https://meuringo.com.br',
+        changeOrigin: true,
+      },
+      '/store': {
+        target: 'https://meuringo.com.br',
+        changeOrigin: true,
+      },
+      '/sheet': {
+        target: 'https://meuringo.com.br',
+        changeOrigin: true,
+      }
+    }
+  }
 })

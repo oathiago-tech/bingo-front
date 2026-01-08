@@ -20,31 +20,42 @@ export default function Purchase() {
     useEffect(() => {
         const loadPending = async () => {
             try {
-                const res = await axios.get('https://meuringo.com.br/raffle/pending');
-                const data = res.data || [];
-                setPendingRaffles(data.sort((a, b) => a.raffleDate.localeCompare(b.raffleDate)));
-            } catch (err) { console.error(err); }
+                // Endpoint correto para listagem de sorteios
+                const res = await axios.get('https://meuringo.com.br/ringo/raffle/pending');
+                const data = res.data;
+
+                if (Array.isArray(data)) {
+                    setPendingRaffles(data.sort((a, b) => {
+                        if (!a.raffleDate || !b.raffleDate) return 0;
+                        return a.raffleDate.localeCompare(b.raffleDate);
+                    }));
+                } else {
+                    setPendingRaffles([]);
+                }
+            } catch (err) {
+                console.error("Erro ao carregar sorteios:", err);
+                setPendingRaffles([]);
+            }
         };
         loadPending();
     }, []);
 
     useEffect(() => {
-        // Agora limpa apenas se o campo estiver vazio
         if (storeSearch.length === 0) {
             setStores([]);
             setShowStoreResults(false);
             return;
         }
 
-        // Debounce de 300ms para não sobrecarregar a API, mas inicia na primeira letra
         const timer = setTimeout(async () => {
             try {
-                const res = await axios.get(`https://meuringo.com.br/store/search?name=${encodeURIComponent(storeSearch)}`);
-                const data = res.data || [];
-                setStores(Array.isArray(data) ? data : []);
-                setShowStoreResults(true);
+                const res = await axios.get(`https://meuringo.com.br/ringo/store/search?name=${encodeURIComponent(storeSearch)}`);
+                const data = res.data;
+                const results = Array.isArray(data) ? data : (data.content || []);
+                setStores(results);
+                setShowStoreResults(results.length > 0);
             } catch (err) {
-                console.error(err);
+                console.error("Erro na busca de lojas:", err);
                 setStores([]);
             }
         }, 300);
@@ -112,10 +123,10 @@ export default function Purchase() {
                 raffleHour: dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             };
 
-            const res = await axios.post('https://meuringo.com.br/sheet', [payload]);
+            const res = await axios.post('https://meuringo.com.br/ringo/sheet', [payload]);
             const data = res.data || [];
             setSheets(data);
-        } catch (err) { console.error(err); }
+        } catch (err) { console.error("Erro ao criar cartelas:", err); }
         setLoading(false);
     };
 
@@ -218,15 +229,15 @@ export default function Purchase() {
                                                 ? 'bg-yellow-500 border-white text-black scale-105 shadow-lg'
                                                 : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500'}`}
                                         >
-                                                <span className="text-[10px] uppercase font-black">
-                                                    {date.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' })}
-                                                </span>
+                                            <span className="text-[10px] uppercase font-black">
+                                                {date.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' })}
+                                            </span>
                                             <span className="text-xl font-black">
-                                                    {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                </span>
+                                                {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </span>
                                             <span className="text-[10px] font-bold text-green-500 bg-black/20 px-2 rounded-full mt-1">
-                                                    R$ {raffle.value.toFixed(2)}
-                                                </span>
+                                                R$ {raffle.value.toFixed(2)}
+                                            </span>
                                         </button>
                                     );
                                 })}

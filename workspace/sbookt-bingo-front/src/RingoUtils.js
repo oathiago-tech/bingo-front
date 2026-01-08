@@ -1,6 +1,6 @@
-import axios from 'axios';
-
 // --- Áudio ---
+import axios from "axios";
+
 export const playBeep = () => {
     try {
         const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -96,4 +96,44 @@ export const getCurrentRaffleTime = () => {
     const now = new Date();
     const currentInterval = Math.floor(now.getMinutes() / 15) * 15;
     return `${String(now.getHours()).padStart(2, '0')}:${String(currentInterval).padStart(2, '0')}`;
+};
+
+export const fetchStatus = async () => {
+    try {
+        const res = await axios.get('https://meuringo.com.br/ringo/raffle/is-started');
+        return res.data;
+    } catch (e) {
+        return false;
+    }
+};
+
+export const fetchDailyData = async () => {
+    try {
+        const [resWinners, resRaffles] = await Promise.all([
+            fetch('https://meuringo.com.br/ringo/winner/today', { headers: { Accept: 'application/json' } }),
+            fetch('https://meuringo.com.br/ringo/raffle/today', { headers: { Accept: 'application/json' } })
+        ]);
+
+        if (!resWinners.ok || !resRaffles.ok) {
+            console.warn('fetchDailyData HTTP error:', resWinners.status, resRaffles.status);
+            return { winners: [], raffles: [] };
+        }
+
+        const winners = await resWinners.json().catch(() => []);
+        const raffles = await resRaffles.json().catch(() => []);
+
+        const safeWinners = Array.isArray(winners) ? winners : [];
+        const safeRaffles = Array.isArray(raffles) ? raffles : [];
+
+        return {
+            winners: safeWinners,
+            raffles: safeRaffles.sort((a, b) => {
+                if (!a?.raffleDate || !b?.raffleDate) return 0;
+                return String(a.raffleDate).localeCompare(String(b.raffleDate));
+            })
+        };
+    } catch (e) {
+        console.error('Erro ao carregar sorteios:', e);
+        return { winners: [], raffles: [] };
+    }
 };

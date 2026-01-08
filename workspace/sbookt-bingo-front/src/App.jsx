@@ -1,4 +1,3 @@
-
 import {useEffect, useRef, useState} from 'react'
 import {
     playBeep,
@@ -6,8 +5,10 @@ import {
     speakStartMessage,
     calculateRaffleSchedule,
     getCurrentRaffleTime,
-} from './RingoUtils.js';
-import axios from 'axios';
+    fetchStatus,
+    fetchDailyData
+} from './RingoUtils.js'
+import axios from "axios";
 
 function App() {
     const [numbers, setNumbers] = useState([])
@@ -27,38 +28,6 @@ function App() {
     useEffect(() => {
         numbersRef.current = numbers
     }, [numbers])
-
-    const fetchStatus = async () => {
-        try {
-            const res = await axios.get('https://meuringo.com.br/raffle/is-started');
-            return res.data;
-        } catch (e) {
-            return false;
-        }
-    };
-
-    const fetchDailyData = async () => {
-        try {
-            const [resWinners, resRaffles] = await Promise.all([
-                axios.get('https://meuringo.com.br/winner/today'),
-                axios.get('https://meuringo.com.br/raffle/today')
-            ]);
-
-            const winners = resWinners.data || [];
-            const raffles = resRaffles.data || [];
-
-            return {
-                winners,
-                raffles: raffles.sort((a, b) => {
-                    if (!a.raffleDate || !b.raffleDate) return 0;
-                    return a.raffleDate.localeCompare(b.raffleDate);
-                })
-            };
-        } catch (e) {
-            console.error("Erro ao buscar dados diários:", e);
-            return { winners: [], raffles: [] };
-        }
-    };
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date().toLocaleTimeString()), 1000);
@@ -103,13 +72,14 @@ function App() {
 
     useEffect(() => {
         const check = async () => {
-            if (isStarted) return;
             const started = await fetchStatus();
-            if (started) {
+            if (started && !isStarted) {
                 setIsStarted(true);
                 setShowStartMessage(true);
                 speakStartMessage();
                 setTimeout(() => setShowStartMessage(false), 10000);
+            } else if (!started) {
+                setIsStarted(false);
             }
         };
         const timer = setInterval(check, 15000);
@@ -120,10 +90,10 @@ function App() {
     useEffect(() => {
         if (!isStarted) return;
         let isMounted = true;
-        const raffleLoop = async () => {
+        const loop = async () => {
             while (isMounted && isStarted) {
                 try {
-                    const res = await axios.get('https://meuringo.com.br/raffle');
+                    const res = await axios.get('https://meuringo.com.br/ringo/raffle/');
                     const data = res.data;
                     if (res.status === 500 || data?.code === 500) {
                         setIsStarted(false);
@@ -136,7 +106,7 @@ function App() {
                             setNumbers(data.map(Number));
                             setCurrentBall(last);
                             speakNumber(last, prevCount);
-                            const resWin = await axios.get('https://meuringo.com.br/raffle/validate-winners');
+                            const resWin = await axios.get('https://meuringo.com.br/ringo/raffle/validate-winners');
                             const winData = resWin.data;
                             if (winData && Array.isArray(winData) && winData.length > 0) {
                                 setCurrentBall(null);
@@ -158,7 +128,7 @@ function App() {
                 await new Promise(r => setTimeout(r, 1000));
             }
         };
-        raffleLoop();
+        loop();
         return () => {
             isMounted = false;
         };

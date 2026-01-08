@@ -3,7 +3,10 @@ import {
     playBeep,
     speakNumber,
     speakStartMessage,
+    calculateRaffleSchedule,
     getCurrentRaffleTime,
+    fetchStatus,
+    fetchDailyData
 } from './RingoUtils.js'
 import axios from 'axios';
 
@@ -26,38 +29,6 @@ function MobileBingo() {
     useEffect(() => {
         numbersRef.current = numbers
     }, [numbers])
-
-    const fetchStatus = async () => {
-        try {
-            const res = await axios.get('https://meuringo.com.br/raffle/is-started');
-            return res.data;
-        } catch (e) {
-            return false;
-        }
-    };
-
-    const fetchDailyData = async () => {
-        try {
-            const [resWinners, resRaffles] = await Promise.all([
-                axios.get('https://meuringo.com.br/winner/today'),
-                axios.get('https://meuringo.com.br/raffle/today')
-            ]);
-
-            const winners = resWinners.data || [];
-            const raffles = resRaffles.data || [];
-
-            return {
-                winners,
-                raffles: raffles.sort((a, b) => {
-                    if (!a.raffleDate || !b.raffleDate) return 0;
-                    return a.raffleDate.localeCompare(b.raffleDate);
-                })
-            };
-        } catch (e) {
-            console.error("Erro ao buscar dados diários:", e);
-            return { winners: [], raffles: [] };
-        }
-    };
 
     const unlockAudioAction = () => {
         playBeep();
@@ -117,7 +88,7 @@ function MobileBingo() {
         const loop = async () => {
             while (isMounted && isStarted) {
                 try {
-                    const res = await axios.get('https://meuringo.com.br/raffle');
+                    const res = await axios.get('https://meuringo.com.br/ringo/raffle/');
                     const data = res.data;
                     if (res.status === 500 || data?.code === 500) {
                         setIsStarted(false);
@@ -130,7 +101,7 @@ function MobileBingo() {
                             setNumbers(data.map(Number));
                             setCurrentBall(last);
                             speakNumber(last, prevCount);
-                            const resWin = await axios.get('https://meuringo.com.br/raffle/validate-winners');
+                            const resWin = await axios.get('https://meuringo.com.br/ringo/raffle/validate-winners');
                             const winData = resWin.data;
                             if (winData && Array.isArray(winData) && winData.length > 0) {
                                 setCurrentBall(null);

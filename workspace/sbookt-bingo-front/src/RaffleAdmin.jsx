@@ -14,8 +14,7 @@ export default function RaffleAdmin() {
 
     const loadPending = async () => {
         try {
-            const res = await axios.get('https://meuringo.com.br/raffle/pending');
-            // Axios retorna os dados diretamente em res.data
+            const res = await axios.get('https://meuringo.com.br/ringo/raffle/pending');
             if (res.data && Array.isArray(res.data)) {
                 setPendingRaffles(res.data.sort((a, b) => a.raffleDate.localeCompare(b.raffleDate)));
             }
@@ -34,8 +33,7 @@ export default function RaffleAdmin() {
         e.preventDefault();
         setLoading(true);
         try {
-            // Alterado para /raffle/save para evitar o 404 do root /raffle
-            const res = await axios.post('https://meuringo.com.br/raffle/save', {
+            const res = await axios.post('https://meuringo.com.br/ringo/raffle', {
                 raffleDate: formData.raffleDate,
                 value: parseFloat(formData.value)
             }, {
@@ -56,25 +54,28 @@ export default function RaffleAdmin() {
         }
     };
 
-    const handleStartRaffle = (raffle) => {
-        const raffleId = raffle.id;
-
-        if (!raffleId) {
-            alert("ERRO: O Backend não enviou o ID deste sorteio. Impossível iniciar.");
-            return;
-        }
-
-        axios.post(`https://meuringo.com.br/raffle/start?id=${raffleId}`)
-            .then(res => {
-                if (res.status === 200) {
-                    console.log("Sorteio iniciado com sucesso!");
+    const startRaffle = async (raffleId) => {
+        try {
+            const res = await axios.post(
+                "https://meuringo.com.br/ringo/raffle/start",
+                "", // body vazio (equivalente ao --data '')
+                {
+                    params: { id: raffleId },
+                    headers: { "Content-Type": "text/plain" }, // opcional, mas ajuda a ficar explícito
                 }
-            })
-            .catch(err => console.error("Erro ao iniciar sorteio:", err));
+            );
 
-        setPendingRaffles(prev => prev.filter(r => r.id !== raffleId));
-        setShowSuccess(true);
-        setTimeout(() => setShowSuccess(false), 3000);
+            if (res.status === 200) {
+                console.log("Sorteio iniciado com sucesso!");
+                setPendingRaffles((prev) => prev.filter((r) => r.id !== raffleId));
+                setShowSuccess(true);
+                setTimeout(() => setShowSuccess(false), 3000);
+            } else {
+                console.error("Erro ao iniciar sorteio: status", res.status, res.data);
+            }
+        } catch (err) {
+            console.error("Erro ao iniciar sorteio:", err);
+        }
     };
 
     return (
@@ -161,7 +162,7 @@ export default function RaffleAdmin() {
                                         </div>
                                     </div>
                                     <button
-                                        onClick={() => handleStartRaffle(r)}
+                                        onClick={() => startRaffle(r.id)}
                                         className="bg-green-600 hover:bg-green-500 text-white font-black px-8 py-4 rounded-2xl uppercase text-sm shadow-xl transition-all flex items-center gap-2 active:scale-95"
                                     >
                                         ▶ Iniciar
