@@ -109,7 +109,6 @@ function App() {
                             speakNumber(last, prevCount);
                             const resWin = await axios.get('https://meuringo.com.br/ringo/raffle/validate-winners');
                             const winData = resWin.data;
-                            await setCurrentBall(null);
                             if (winData && Array.isArray(winData) && winData.length > 0) {
                                 setWinners(winData);
                                 audioInstanceRef.current.play();

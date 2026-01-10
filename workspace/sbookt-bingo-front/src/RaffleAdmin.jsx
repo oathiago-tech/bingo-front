@@ -79,6 +79,121 @@ export default function RaffleAdmin() {
         }
     };
 
+    // =========================
+    // Configs Modal (NOVO)
+    // =========================
+    const [showConfigsModal, setShowConfigsModal] = useState(false);
+    const [configsLoading, setConfigsLoading] = useState(false);
+    const [configsSavingKey, setConfigsSavingKey] = useState(null);
+    const [configsError, setConfigsError] = useState('');
+    const [configs, setConfigs] = useState([]); // {configKey, configValue, isNew, dirty}
+
+    const openConfigs = async () => {
+        setShowConfigsModal(true);
+        setConfigsError('');
+        await loadConfigs();
+    };
+
+    const closeConfigs = () => {
+        setShowConfigsModal(false);
+        setConfigsError('');
+        setConfigsSavingKey(null);
+    };
+
+    const loadConfigs = async () => {
+        setConfigsLoading(true);
+        setConfigsError('');
+        try {
+            const res = await axios.get('https://meuringo.com.br/ringo/configs');
+            const data = Array.isArray(res.data) ? res.data : [];
+            setConfigs(
+                data.map((c) => ({
+                    configKey: String(c.configKey ?? ''),
+                    configValue: String(c.configValue ?? ''),
+                    isNew: false,
+                    dirty: false,
+                }))
+            );
+        } catch (err) {
+            console.error("Erro ao carregar configs:", err);
+            setConfigsError('Erro ao carregar configurações.');
+        } finally {
+            setConfigsLoading(false);
+        }
+    };
+
+    const updateConfigRow = (idx, patch) => {
+        setConfigs((prev) => {
+            const copy = [...prev];
+            copy[idx] = { ...copy[idx], ...patch };
+            return copy;
+        });
+    };
+
+    const addConfigRow = () => {
+        setConfigsError('');
+        setConfigs((prev) => [
+            ...prev,
+            { configKey: '', configValue: '', isNew: true, dirty: true }
+        ]);
+    };
+
+    const saveConfigRow = async (idx) => {
+        const row = configs[idx];
+        const configKey = String(row.configKey || '').trim();
+        const configValue = String(row.configValue ?? '');
+
+        if (!configKey) {
+            setConfigsError('O campo "Key" é obrigatório.');
+            return;
+        }
+
+        // evitar duplicados ao criar
+        if (row.isNew) {
+            const exists = configs.some((r, i) => i !== idx && String(r.configKey || '').trim() === configKey && !r.isNew);
+            if (exists) {
+                setConfigsError(`Já existe uma configuração com key "${configKey}".`);
+                return;
+            }
+        }
+
+        setConfigsSavingKey(configKey);
+        setConfigsError('');
+        try {
+            await axios.post(
+                'https://meuringo.com.br/ringo/configs',
+                { configKey, configValue },
+                { headers: { 'Content-Type': 'application/json' } }
+            );
+
+            // Depois de salvar, key não pode ser editado
+            updateConfigRow(idx, {
+                configKey,
+                configValue,
+                isNew: false,
+                dirty: false,
+            });
+
+            setShowSuccess(true);
+            setTimeout(() => setShowSuccess(false), 3000);
+        } catch (err) {
+            console.error("Erro ao salvar config:", err);
+            setConfigsError(`Erro ao salvar "${configKey}".`);
+        } finally {
+            setConfigsSavingKey(null);
+        }
+    };
+
+    const handleBlurConfigValue = async (idx) => {
+        const row = configs[idx];
+        if (!row?.dirty) return;
+        await saveConfigRow(idx);
+    };
+
+    const handleKeyDownModal = (e) => {
+        if (e.key === 'Escape') closeConfigs();
+    };
+
     return (
         <div className="min-h-screen bg-slate-950 p-6 text-white font-sans">
             {showSuccess && (
@@ -90,15 +205,132 @@ export default function RaffleAdmin() {
                 </div>
             )}
 
+            {showConfigsModal && (
+                <div
+                    className="fixed inset-0 z-[300] bg-black/70 flex items-center justify-center p-4"
+                    onKeyDown={handleKeyDownModal}
+                    tabIndex={-1}
+                >
+                    <div className="w-full max-w-4xl bg-slate-950 border border-slate-800 rounded-[2rem] shadow-2xl overflow-hidden">
+                        <div className="p-6 border-b border-slate-800 flex items-center justify-between">
+                            <div className="flex flex-col">
+                                <h2 className="text-2xl font-black text-yellow-500 uppercase">Configurações</h2>
+                                <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mt-1">
+                                    Edite o Value e saia do campo para salvar
+                                </p>
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={addConfigRow}
+                                    className="bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-xl font-black transition-all border border-slate-700"
+                                >
+                                    ➕ Adicionar
+                                </button>
+                                <button
+                                    onClick={loadConfigs}
+                                    className="bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-xl font-black transition-all border border-slate-700"
+                                >
+                                    🔄 Recarregar
+                                </button>
+                                <button
+                                    onClick={closeConfigs}
+                                    className="bg-red-600 hover:bg-red-500 px-4 py-2 rounded-xl font-black transition-all border border-red-400/30"
+                                >
+                                    ✕ Fechar
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="p-6">
+                            {configsError && (
+                                <div className="mb-4 bg-red-600/20 border border-red-500/30 text-red-200 p-4 rounded-2xl font-bold">
+                                    {configsError}
+                                </div>
+                            )}
+
+                            {configsLoading ? (
+                                <div className="opacity-60 font-bold">Carregando configurações...</div>
+                            ) : (
+                                <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
+                                    {configs.length > 0 ? configs.map((c, idx) => {
+                                        const keyTrim = String(c.configKey || '').trim();
+                                        const busy = configsSavingKey && configsSavingKey === keyTrim;
+
+                                        return (
+                                            <div
+                                                key={`${c.configKey || 'new'}-${idx}`}
+                                                className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex gap-3 items-center"
+                                            >
+                                                <div className="flex-1">
+                                                    <label className="block text-[10px] font-black uppercase text-slate-500 mb-2">
+                                                        Key {c.isNew ? '(novo)' : '(travado)'}
+                                                    </label>
+                                                    <input
+                                                        value={c.configKey}
+                                                        disabled={!c.isNew}
+                                                        onChange={(e) => updateConfigRow(idx, { configKey: e.target.value, dirty: true })}
+                                                        className="w-full bg-slate-800 border border-slate-700 p-3 rounded-xl outline-none focus:border-yellow-500 font-bold text-white transition-colors disabled:opacity-70"
+                                                        placeholder="ex: botAmount"
+                                                    />
+                                                </div>
+
+                                                <div className="flex-1">
+                                                    <label className="block text-[10px] font-black uppercase text-slate-500 mb-2">
+                                                        Value
+                                                    </label>
+                                                    <input
+                                                        value={c.configValue}
+                                                        onChange={(e) => updateConfigRow(idx, { configValue: e.target.value, dirty: true })}
+                                                        onBlur={() => handleBlurConfigValue(idx)}
+                                                        className="w-full bg-slate-800 border border-slate-700 p-3 rounded-xl outline-none focus:border-yellow-500 font-bold text-white transition-colors"
+                                                        placeholder='ex: "7000" ou "false"'
+                                                    />
+                                                </div>
+
+                                                <div className="w-[170px] pt-6">
+                                                    <button
+                                                        onClick={() => saveConfigRow(idx)}
+                                                        disabled={busy || (!c.isNew && !c.dirty)}
+                                                        className="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-black py-3 rounded-xl uppercase shadow-lg transition-all disabled:opacity-50"
+                                                    >
+                                                        {busy ? 'Salvando...' : 'Salvar'}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    }) : (
+                                        <div className="flex flex-col items-center justify-center py-16 opacity-30">
+                                            <span className="text-6xl mb-6">⚙️</span>
+                                            <p className="font-black uppercase tracking-[0.2em]">Nenhuma configuração encontrada</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div className="max-w-6xl mx-auto">
                 <div className="flex justify-between items-center mb-10">
                     <div className="flex flex-col">
                         <h1 className="text-3xl font-black text-yellow-500 uppercase italic leading-none">Gestão Ringo</h1>
                         <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mt-1">Painel Administrativo</p>
                     </div>
-                    <button onClick={() => navigate('/')} className="bg-slate-800 hover:bg-slate-700 px-6 py-2 rounded-xl font-bold transition-all flex items-center gap-2 border border-slate-700">
-                        ← Voltar ao Bingo
-                    </button>
+
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={openConfigs}
+                            className="bg-slate-800 hover:bg-slate-700 px-6 py-2 rounded-xl font-bold transition-all flex items-center gap-2 border border-slate-700"
+                        >
+                            ⚙️ Configurações
+                        </button>
+
+                        <button onClick={() => navigate('/')} className="bg-slate-800 hover:bg-slate-700 px-6 py-2 rounded-xl font-bold transition-all flex items-center gap-2 border border-slate-700">
+                            ← Voltar ao Bingo
+                        </button>
+                    </div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

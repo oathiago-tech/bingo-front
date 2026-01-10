@@ -72,9 +72,6 @@ export function speakNumber(number, prevCount = 0) {
 
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'pt-BR';
-    utterance.rate = 0.78;
-    utterance.pitch = 0.1;
-    utterance.volume = 1;
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(utterance);
 }
@@ -94,10 +91,6 @@ export const speakStartMessage = () => {
     if (selectedVoice) utterance.voice = selectedVoice;
 
     utterance.lang = 'pt-BR';
-    utterance.rate = 0.78;
-    utterance.pitch = 0.1;
-    utterance.volume = 1;
-
     synth.cancel();
     synth.speak(utterance);
 };

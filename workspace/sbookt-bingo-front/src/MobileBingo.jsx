@@ -107,7 +107,7 @@ function MobileBingo() {
                             if (winData && Array.isArray(winData) && winData.length > 0) {
                                 setCurrentBall(null);
                                 setWinners(winData);
-                                audioInstanceRef.current.play();
+                                await audioInstanceRef.current.play();
                                 await new Promise(r => setTimeout(r, 30000));
                                 audioInstanceRef.current.pause();
                                 setWinners([]);
