@@ -17,12 +17,12 @@ export const playBeep = () => {
         const gainNode = audioCtx.createGain();
 
         oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // Nota Lá (A5)
+        oscillator.frequency.setValueAtTime(1000, audioCtx.currentTime); // Nota Lá (A5)
 
         // Volume inicial mais audível
-        gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
         // Decaimento suave
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1);
 
         oscillator.connect(gainNode);
         gainNode.connect(audioCtx.destination);
@@ -34,47 +34,71 @@ export const playBeep = () => {
     }
 };
 
-export const speakNumber = (num, currentCount) => {
-    if (!('speechSynthesis' in window)) return;
-    const synth = window.speechSynthesis;
-    synth.cancel();
+export function speakNumber(number, prevCount = 0) {
+    const prefix = prevCount === 0 ? 'Primeiro número' : 'Próximo número';
 
-    const createUtterance = (text) => {
-        const utterance = new SpeechSynthesisUtterance(text);
-        const voices = synth.getVoices();
-        const selectedVoice = voices.find(v => v.name.includes('Antonio'))
-            || voices.find(v => v.name.includes('Google') && v.lang.includes('pt-BR'))
-            || voices.find(v => v.lang.includes('pt-BR'));
-
-        if (selectedVoice) utterance.voice = selectedVoice;
-        utterance.lang = 'pt-BR';
-        utterance.rate = 0.70;
-        return utterance;
+    const digitWord = (d) => {
+        const map = {
+            0: 'zero',
+            1: 'um',
+            2: 'dois',
+            3: 'três',
+            4: 'quatro',
+            5: 'cinco',
+            6: 'seis',
+            7: 'sete',
+            8: 'oito',
+            9: 'nove',
+        };
+        return map[d] ?? String(d);
     };
 
-    const prefix = currentCount === 0 ? "Primeiro Número" : "Próximo Número";
-    const firstPart = createUtterance(`${prefix}.  .  .  .  . ${num}`);
+    const asDigitsSpeech = (n) => {
+        if (!Number.isFinite(n)) return String(n);
 
-    firstPart.onend = () => {
-        setTimeout(() => {
-            let secondText = (num >= 10)
-                ? `${num.toString()[0]} . . . ${num.toString()[1]}`
-                : `${num}`;
-            synth.speak(createUtterance(secondText));
-        }, 1000);
+        // 1..9 -> "zero um" ... "zero nove"
+        if (Number.isInteger(n) && n >= 1 && n <= 9) {
+            return `zero ${digitWord(n)}`;
+        }
+
+        // 10..99 -> "quatro sete", "dois oito", etc.
+        const s = String(Math.trunc(n));
+        return s.split('').map(ch => digitWord(Number(ch))).join(' ');
     };
-    synth.speak(firstPart);
-};
+
+    const n = Number(number);
+
+    const text = `${prefix} ${n}, ${asDigitsSpeech(n)}`;
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'pt-BR';
+    utterance.rate = 0.78;
+    utterance.pitch = 0.1;
+    utterance.volume = 1;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
+}
 
 export const speakStartMessage = () => {
     if (!('speechSynthesis' in window)) return;
+
     const synth = window.speechSynthesis;
-    const utterance = new SpeechSynthesisUtterance("A Próxima rodada vai começar");
+    const utterance = new SpeechSynthesisUtterance(
+        "A próxima rodada vai começar!"
+    );
+
     const voices = synth.getVoices();
-    const selectedVoice = voices.find(v => v.name.includes('Antonio')) || voices.find(v => v.lang.includes('pt-BR'));
+    const selectedVoice =
+        voices.find(v => v.name === 'Luciana');
+
     if (selectedVoice) utterance.voice = selectedVoice;
+
     utterance.lang = 'pt-BR';
-    utterance.rate = 0.9;
+    utterance.rate = 0.78;
+    utterance.pitch = 0.1;
+    utterance.volume = 1;
+
+    synth.cancel();
     synth.speak(utterance);
 };
 
@@ -87,7 +111,10 @@ export const calculateRaffleSchedule = () => {
     const nextInterval = Math.ceil((minutes + 0.1) / 15) * 15;
     let nextHour = hour;
     let nextMin = nextInterval;
-    if (nextInterval === 60) { nextHour += 1; nextMin = 0; }
+    if (nextInterval === 60) {
+        nextHour += 1;
+        nextMin = 0;
+    }
     if (nextHour >= 19 && nextMin > 0) return "09:00";
     return `${String(nextHour).padStart(2, '0')}:${String(nextMin).padStart(2, '0')}`;
 };
@@ -110,13 +137,13 @@ export const fetchStatus = async () => {
 export const fetchDailyData = async () => {
     try {
         const [resWinners, resRaffles] = await Promise.all([
-            fetch('https://meuringo.com.br/ringo/winner/today', { headers: { Accept: 'application/json' } }),
-            fetch('https://meuringo.com.br/ringo/raffle/today', { headers: { Accept: 'application/json' } })
+            fetch('https://meuringo.com.br/ringo/winner/today', {headers: {Accept: 'application/json'}}),
+            fetch('https://meuringo.com.br/ringo/raffle/today', {headers: {Accept: 'application/json'}})
         ]);
 
         if (!resWinners.ok || !resRaffles.ok) {
             console.warn('fetchDailyData HTTP error:', resWinners.status, resRaffles.status);
-            return { winners: [], raffles: [] };
+            return {winners: [], raffles: []};
         }
 
         const winners = await resWinners.json().catch(() => []);
@@ -134,6 +161,6 @@ export const fetchDailyData = async () => {
         };
     } catch (e) {
         console.error('Erro ao carregar sorteios:', e);
-        return { winners: [], raffles: [] };
+        return {winners: [], raffles: []};
     }
 };

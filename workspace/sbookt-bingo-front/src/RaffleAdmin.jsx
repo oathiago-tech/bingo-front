@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from "axios";
+import './App.css'
 
 export default function RaffleAdmin() {
     const navigate = useNavigate();

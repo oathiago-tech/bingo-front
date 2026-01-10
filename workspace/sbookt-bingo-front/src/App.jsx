@@ -109,11 +109,11 @@ function App() {
                             speakNumber(last, prevCount);
                             const resWin = await axios.get('https://meuringo.com.br/ringo/raffle/validate-winners');
                             const winData = resWin.data;
+                            await setCurrentBall(null);
                             if (winData && Array.isArray(winData) && winData.length > 0) {
-                                setCurrentBall(null);
                                 setWinners(winData);
                                 audioInstanceRef.current.play();
-                                await new Promise(r => setTimeout(r, 30000));
+                                await new Promise(r => setTimeout(r, 15000));
                                 audioInstanceRef.current.pause();
                                 setWinners([]);
                                 setNumbers([]);
@@ -166,14 +166,16 @@ function App() {
                             <div
                                 key={r.id ?? i}
                                 className={`p-4 rounded-2xl border flex justify-between items-center ${
-                                    isActive ? 'bg-yellow-500 border-white scale-105 shadow-xl z-10' : 'bg-slate-800/30 border-slate-800'
+                                    isActive ? 'bg-yellow-500 border-white shadow-xl z-0' : 'bg-slate-800/30 border-slate-800'
                                 }`}
                             >
                                 <div className="flex flex-col">
-                                    <span className={`font-mono text-xl font-bold ${isActive ? 'text-black' : 'text-slate-300'}`}>
+                                    <span
+                                        className={`font-mono text-xl font-bold ${isActive ? 'text-black' : 'text-slate-300'}`}>
                                         {raffleTimeString}
                                     </span>
-                                    <span className={`text-[10px] font-black uppercase ${isActive ? 'text-black/70' : 'text-slate-500'}`}>
+                                    <span
+                                        className={`text-[10px] font-black uppercase ${isActive ? 'text-black/70' : 'text-slate-500'}`}>
                                         {r.status}
                                     </span>
                                 </div>
@@ -194,7 +196,7 @@ function App() {
                             className="bg-slate-900/80 backdrop-blur-md px-6 py-3 rounded-2xl border border-slate-800 shadow-2xl">
                             <span className="text-2xl font-black text-yellow-500 font-mono">{currentTime}</span></div>
                     </div>
-                    <p className="text-yellow-500 font-black uppercase tracking-[0.3em] text-xl italic mt-[-0px] animate-bounce-rotate">Seu
+                    <p className="text-yellow-500 font-black uppercase tracking-[0.3em] text-xl italic mt-[-0px] animate-bounce">Seu
                         dia de sorte</p>
                 </div>
                 <div
@@ -205,7 +207,6 @@ function App() {
                         <span
                             className="text-xl font-bold uppercase">{isStarted ? 'Rodada Em Andamento' : 'Aguardando a próxima rodada'}</span>
                     </div>
-                    <p className="text-slate-500 text-xs font-black uppercase">PRÓXIMA: {nextRaffleTime}</p>
                 </div>
                 {winners.length > 0 && <div
                     className="w-full max-w-5xl bg-red-600 p-8 rounded-[3rem] border-8 border-white text-center animate-pulse shadow-2xl">{winners.map((w, i) =>
@@ -213,7 +214,11 @@ function App() {
                 <div
                     className="grid grid-cols-10 gap-3 p-8 bg-slate-900/50 rounded-[3rem] border border-slate-800 shadow-2xl">{Array.from({length: 75}, (_, i) => i + 1).map(n =>
                     <div key={n}
-                         className={`w-16 h-16 flex items-center justify-center rounded-full border-2 font-black transition-all ${numbers.includes(n) ? 'bg-white border-white text-slate-950 scale-110 shadow-xl' : 'bg-slate-800/40 border-slate-700 text-slate-600'}`}>{n}</div>)}</div>
+                         className={`w-16 h-16 flex items-center justify-center rounded-full border-2 font-black transition-all ${numbers.includes(n) ? 'bg-white border-white text-slate-950 scale-110 shadow-xl' : 'bg-slate-800/40 border-slate-700 text-slate-600 animate-pulse'}`}>{n}</div>)}</div>
+                <div
+                    className="flex justify-center items-center sticky bottom-0 z-50 text-[10px] font-bold text-slate-600 uppercase tracking-widest">Sorteios
+                    Automáticos de 30 em 30 minutos • Ringo
+                </div>
             </div>
 
             <div className="w-96 bg-slate-900 border-l border-slate-800 p-8 flex flex-col shadow-2xl">

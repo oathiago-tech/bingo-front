@@ -1,4 +1,5 @@
 import {useEffect, useRef, useState} from 'react'
+import './App.css'
 import {
     playBeep,
     speakNumber,
@@ -146,8 +147,8 @@ function MobileBingo() {
             )}
             <div className="p-4 bg-slate-900 border-b border-slate-800 flex justify-between items-center z-50">
                 <div className="flex flex-col">
-                    <h1 className="text-2xl font-black text-yellow-500 italic uppercase">RINGO</h1>
-                    <p className="text-yellow-500 font-black uppercase text-[8px] italic animate-bounce-rotate">Seu dia
+                    <h1 className="text-2xl font-black text-yellow-500 italic uppercase ringo-3d-mobile">RINGO</h1>
+                    <p className="text-yellow-500 font-black uppercase text-[8px] italic animate-bounce">Seu dia
                         de sorte</p>
                 </div>
                 <div
@@ -172,7 +173,7 @@ function MobileBingo() {
             {showRafflesModal && (
                 <div className="fixed inset-0 z-[110] bg-slate-950/95 p-6 flex flex-col">
                     <div className="flex justify-between items-center mb-6"><h2
-                        className="text-xl font-black text-yellow-500">📅 Próximos Sorteios</h2>
+                        className="text-xl font-black text-yellow-500 animate-pulse">📅 Próximos Sorteios</h2>
                         <button onClick={() => setShowRafflesModal(false)} className="text-3xl">&times;</button>
                     </div>
                     <div className="flex-1 space-y-3 overflow-y-auto">
@@ -209,7 +210,7 @@ function MobileBingo() {
             {showWinnersModal && (
                 <div className="fixed inset-0 z-[110] bg-slate-950/95 p-6 flex flex-col">
                     <div className="flex justify-between items-center mb-6"><h2
-                        className="text-xl font-black text-yellow-500">🏆 Prêmios do dia</h2>
+                        className="text-xl font-black text-yellow-500 animate-pulse">🏆 Prêmios do dia</h2>
                         <button onClick={() => setShowWinnersModal(false)} className="text-3xl">&times;</button>
                     </div>
                     <div
@@ -238,11 +239,11 @@ function MobileBingo() {
                 <div
                     className="grid grid-cols-6 gap-2 p-2 bg-slate-900/50 rounded-2xl border border-slate-800 shadow-inner">{Array.from({length: 75}, (_, i) => i + 1).map(n =>
                     <div key={n}
-                         className={`aspect-square flex items-center justify-center rounded-full border text-sm font-black transition-all ${numbers.includes(n) ? 'bg-white text-slate-950 border-white shadow-lg scale-105' : 'bg-slate-800/40 border-slate-700 text-slate-600'}`}>{n}</div>)}</div>
+                         className={`aspect-square flex items-center justify-center rounded-full border text-sm font-black transition-all ${numbers.includes(n) ? 'bg-white text-slate-950 border-white shadow-lg scale-105 animate-pulse' : 'bg-slate-800/40 border-slate-700 text-slate-600'}`}>{n}</div>)}</div>
             </main>
             <div
                 className="p-4 bg-slate-900 border-t border-slate-800 flex justify-center items-center sticky bottom-0 z-50 text-[10px] font-bold text-slate-600 uppercase tracking-widest">Sorteios
-                Automáticos • Ringo
+                Automáticos de 30 em 30 minutos • Ringo
             </div>
         </div>
     );

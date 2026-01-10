@@ -13,3 +13,19 @@
   /* opcional: sensação de profundidade */
   transform: translateZ(0);
 }
+
+.ringo-3d-mobile {
+    /* "extrusão" (degraus) */
+    text-shadow:
+            0 1px 0 #b45309,
+            0 2px 0 #92400e,
+            0 3px 0 #78350f,
+            0 5px 0 #5a2a0a,
+            0 6px 18px rgba(0, 0, 0, 0.5);
+
+    /* um pouco de brilho/contraste */
+    -webkit-text-stroke: 1px rgba(255, 255, 255, 0.15);
+
+    /* opcional: sensação de profundidade */
+    transform: translateZ(0);
+}
