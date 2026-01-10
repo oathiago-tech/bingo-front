@@ -175,15 +175,35 @@ function MobileBingo() {
                         className="text-xl font-black text-yellow-500">📅 Próximos Sorteios</h2>
                         <button onClick={() => setShowRafflesModal(false)} className="text-3xl">&times;</button>
                     </div>
-                    <div className="flex-1 space-y-3 overflow-y-auto">{dailyRaffles.map((r, i) => <div key={i}
-                                                                                                       className={`p-4 rounded-2xl border ${isStarted && new Date(r.raffleDate).toLocaleTimeString([], {
-                                                                                                           hour: '2-digit',
-                                                                                                           minute: '2-digit'
-                                                                                                       }) === getCurrentRaffleTime() ? 'bg-yellow-500 text-black border-white' : 'bg-slate-900 border-slate-800'} flex justify-between`}>
-                        <span className="font-mono font-bold">{new Date(r.raffleDate).toLocaleTimeString([], {
-                            hour: '2-digit',
-                            minute: '2-digit'
-                        })}</span><span className="font-black">R$ {r.value.toFixed(2)}</span></div>)}</div>
+                    <div className="flex-1 space-y-3 overflow-y-auto">
+                        {dailyRaffles.map((r, i) => {
+                            const raffleTimeString = new Date(r.raffleDate).toLocaleTimeString([], {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            });
+
+                            const isActiveByStatus = String(r.status || '').toUpperCase() === 'STARTED';
+                            const isActiveFallback = isStarted && raffleTimeString === getCurrentRaffleTime();
+                            const isActive = isActiveByStatus || isActiveFallback;
+
+                            return (
+                                <div
+                                    key={r.id ?? i}
+                                    className={`p-4 rounded-2xl border ${
+                                        isActive ? 'bg-yellow-500 text-black border-white' : 'bg-slate-900 border-slate-800'
+                                    } flex justify-between`}
+                                >
+                                    <div className="flex flex-col">
+                                        <span className="font-mono font-bold">{raffleTimeString}</span>
+                                        <span className={`text-[10px] font-black uppercase ${isActive ? 'text-black/70' : 'text-slate-500'}`}>
+                                            {r.status}
+                                        </span>
+                                    </div>
+                                    <span className="font-black">R$ {r.value.toFixed(2)}</span>
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
             )}
             {showWinnersModal && (

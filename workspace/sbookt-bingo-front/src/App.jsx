@@ -1,4 +1,5 @@
 import {useEffect, useRef, useState} from 'react'
+import './App.css'
 import {
     playBeep,
     speakNumber,
@@ -147,8 +148,8 @@ function App() {
                     className="w-80 h-80 bg-white text-slate-950 rounded-full flex items-center justify-center text-[10rem] font-black border-[12px] shadow-2xl animate-bounce">{currentBall}</div>
             </div>}
 
-            <div className="w-80 bg-slate-900 border-r border-slate-800 p-6 flex flex-col shadow-5xl">
-                <h2 className="text-xl font-black text-yellow-500 mb-6 uppercase text-center border-b border-slate-800 pb-4">📅
+            <div className="w-90 bg-slate-900 border-r border-slate-800 p-6 flex flex-col shadow-5xl">
+                <h2 className="text-xl font-black text-yellow-500 mb-6 uppercase text-center border-b border-slate-800 pb-4 animate-pulse">📅
                     Próximos Sorteios</h2>
                 <div className="flex-1 space-y-3 overflow-y-auto pr-2 custom-scrollbar">
                     {dailyRaffles.map((r, i) => {
@@ -156,15 +157,29 @@ function App() {
                             hour: '2-digit',
                             minute: '2-digit'
                         });
-                        const isActive = isStarted && raffleTimeString === getCurrentRaffleTime();
+
+                        const isActiveByStatus = String(r.status || '').toUpperCase() === 'STARTED';
+                        const isActiveFallback = isStarted && raffleTimeString === getCurrentRaffleTime();
+                        const isActive = isActiveByStatus || isActiveFallback;
+
                         return (
-                            <div key={i}
-                                 className={`p-4 rounded-2xl border flex justify-between items-center ${isActive ? 'bg-yellow-500 border-white scale-105 shadow-xl z-10' : 'bg-slate-800/30 border-slate-800'}`}>
-                                <div className="flex flex-col"><span
-                                    className={`font-mono text-xl font-bold ${isActive ? 'text-black' : 'text-slate-300'}`}>{raffleTimeString}</span>
+                            <div
+                                key={r.id ?? i}
+                                className={`p-4 rounded-2xl border flex justify-between items-center ${
+                                    isActive ? 'bg-yellow-500 border-white scale-105 shadow-xl z-10' : 'bg-slate-800/30 border-slate-800'
+                                }`}
+                            >
+                                <div className="flex flex-col">
+                                    <span className={`font-mono text-xl font-bold ${isActive ? 'text-black' : 'text-slate-300'}`}>
+                                        {raffleTimeString}
+                                    </span>
+                                    <span className={`text-[10px] font-black uppercase ${isActive ? 'text-black/70' : 'text-slate-500'}`}>
+                                        {r.status}
+                                    </span>
                                 </div>
-                                <span
-                                    className={`font-black text-lg ${isActive ? 'text-black' : 'text-green-500'}`}>R$ {r.value.toFixed(2)}</span>
+                                <span className={`font-black text-lg ${isActive ? 'text-black' : 'text-green-500'}`}>
+                                    R$ {r.value.toFixed(2)}
+                                </span>
                             </div>
                         );
                     })}
@@ -174,12 +189,12 @@ function App() {
             <div className="flex-1 flex flex-col items-center p-6 space-y-6 overflow-y-auto">
                 <div className="flex flex-col items-center w-full">
                     <div className="flex items-center justify-center gap-10">
-                        <h1 className="text-9xl font-black text-yellow-500 italic uppercase">RINGO</h1>
+                        <h1 className="text-9xl font-black text-yellow-500 italic uppercase ringo-3d">RINGO</h1>
                         <div
                             className="bg-slate-900/80 backdrop-blur-md px-6 py-3 rounded-2xl border border-slate-800 shadow-2xl">
                             <span className="text-2xl font-black text-yellow-500 font-mono">{currentTime}</span></div>
                     </div>
-                    <p className="text-yellow-500 font-black uppercase tracking-[0.3em] text-xl italic mt-[-10px] animate-bounce-rotate">Seu
+                    <p className="text-yellow-500 font-black uppercase tracking-[0.3em] text-xl italic mt-[-0px] animate-bounce-rotate">Seu
                         dia de sorte</p>
                 </div>
                 <div

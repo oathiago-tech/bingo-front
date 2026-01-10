@@ -58,20 +58,20 @@ export default function RaffleAdmin() {
         try {
             const res = await axios.post(
                 "https://meuringo.com.br/ringo/raffle/start",
-                "", // body vazio (equivalente ao --data '')
+                null,
                 {
-                    params: { id: raffleId },
-                    headers: { "Content-Type": "text/plain" }, // opcional, mas ajuda a ficar explícito
+                    params: { id: raffleId }
                 }
             );
 
-            if (res.status === 200) {
-                console.log("Sorteio iniciado com sucesso!");
+            if (res.status >= 200 && res.status < 300) {
+                console.log("Sorteio iniciado com sucesso!", { status: res.status, data: res.data });
                 setPendingRaffles((prev) => prev.filter((r) => r.id !== raffleId));
                 setShowSuccess(true);
                 setTimeout(() => setShowSuccess(false), 3000);
             } else {
                 console.error("Erro ao iniciar sorteio: status", res.status, res.data);
+                alert(`Erro ao iniciar sorteio (status ${res.status}).`);
             }
         } catch (err) {
             console.error("Erro ao iniciar sorteio:", err);
