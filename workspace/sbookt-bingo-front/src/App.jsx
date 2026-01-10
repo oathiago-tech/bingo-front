@@ -98,6 +98,8 @@ function App() {
                     const data = res.data;
                     if (res.status === 500 || data?.code === 500) {
                         setIsStarted(false);
+                        setWinners([]);
+                        setNumbers([]);
                         break;
                     }
                     if (Array.isArray(data) && data.length > 0) {
@@ -110,9 +112,10 @@ function App() {
                             const resWin = await axios.get('https://meuringo.com.br/ringo/raffle/validate-winners');
                             const winData = resWin.data;
                             if (winData && Array.isArray(winData) && winData.length > 0) {
+                                setCurrentBall(null);
                                 setWinners(winData);
-                                audioInstanceRef.current.play();
-                                await new Promise(r => setTimeout(r, 15000));
+                                await audioInstanceRef.current.play();
+                                await new Promise(r => setTimeout(r, 30000));
                                 audioInstanceRef.current.pause();
                                 setWinners([]);
                                 setNumbers([]);

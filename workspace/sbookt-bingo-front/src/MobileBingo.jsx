@@ -93,6 +93,8 @@ function MobileBingo() {
                     const data = res.data;
                     if (res.status === 500 || data?.code === 500) {
                         setIsStarted(false);
+                        setWinners([]);
+                        setNumbers([]);
                         break;
                     }
                     if (Array.isArray(data) && data.length > 0) {
